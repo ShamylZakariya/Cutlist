@@ -1,0 +1,15 @@
+---
+  margin: 0.25
+  boards:
+    - 96x6.5
+    - 96x4.5
+    - 96x4.5
+    - 96x4.5
+  cutlist:
+    - 4@25x2:Leg
+    - 3@14x5:Top Table Slats
+    - 4@4x.75:Apron Mount
+    - 4@20x3:Top Table Edges
+    - 4@16x3:Lower Table Edges
+    - 2@10x5:Lower Table Slats
+    - 2@12x4:Apron
