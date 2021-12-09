@@ -1,10 +1,10 @@
 ---
   margin: 0.25
   boards:
-    - 96x6.5
-    - 96x4.5
-    - 96x4.5
-    - 96x4.5
+    - 96x6.5:A
+    - 96x4.5:B
+    - 96x4.5:C
+    - 96x4.5:D
   cutlist:
     - 4@25x2:Leg
     - 3@14x5:Top Table Slats
