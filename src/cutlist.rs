@@ -1,7 +1,4 @@
-use anyhow::{bail, Result};
-use macroquad::prelude::*;
-use ::rand::seq::SliceRandom;
-use ::rand::thread_rng;
+use itertools::Itertools;
 
 use crate::model;
 
@@ -166,38 +163,46 @@ fn score(cutlist: &[Board]) -> f32 {
     total_score
 }
 
-pub fn compute(model: &model::Input, attempts: usize) -> Result<Vec<Board>> {
+pub fn compute(model: &model::Input) -> Option<Vec<Board>> {
     let mut results = vec![];
-    for attempt in 0..attempts {
-        if let Some(result) = perform_cutlist_allocation(model, attempt) {
+    let boards: Vec<Board> = model.boards.iter().map(|board| board.into()).collect();
+    let cuts: Vec<Cut> = model.cutlist.iter().map(|cut| cut.into()).collect();
+    let mut attempts: i32 = 0;
+
+    for cutlist in cuts.iter().permutations(cuts.len()) {
+        attempts += 1;
+        if let Some(result) = perform_cutlist_allocation(&boards, &cutlist) {
             results.push(result);
         }
     }
 
-    let scores:Vec<_> = results.iter()
+    let scores: Vec<_> = results
+        .iter()
         .map(|solution| score(solution))
         .map(|score| score.to_string())
         .collect();
 
-    println!("Out of {} attempts, found: {} viable solutions, with scores: [{}]", attempts, results.len(), scores.join(", "));
+    println!(
+        "Out of {} attempts, found: {} viable solutions, with scores: [{}]",
+        attempts,
+        results.len(),
+        scores.join(", ")
+    );
 
     // sort results by a scoring metric and pick the best
     results.sort_by(|a, b| score(a).partial_cmp(&score(b)).unwrap());
 
     if let Some(result) = results.first() {
-        Ok(result.clone())
+        Some(result.clone())
     } else {
-        bail!("Couldn't find a viable solution")
+        None
     }
 }
 
-fn perform_cutlist_allocation(model: &model::Input, attempt: usize) -> Option<Vec<Board>> {
-    let mut rng = thread_rng();
-    let mut cuts: Vec<Cut> = model.cutlist.iter().map(|c| c.into()).collect();
-    cuts.shuffle(&mut rng);
-
-    let mut boards: Vec<Board> = model.boards.iter().map(|b| b.into()).collect();
-    let mut orphaned_cuts: Vec<Cut> = Vec::new();
+fn perform_cutlist_allocation(boards: &[Board], cutlist: &[&Cut]) -> Option<Vec<Board>> {
+    let mut boards = boards.to_vec();
+    let mut cuts = cutlist.to_vec();
+    let mut orphaned_cuts = Vec::new();
 
     while let Some(cut) = cuts.pop() {
         let mut orphaned = true;
