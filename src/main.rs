@@ -18,6 +18,9 @@ pub struct Options {
 
     #[structopt(short, long)]
     pub visualize: bool,
+
+    #[structopt(short, long, default_value = "16")]
+    pub attempts: usize
 }
 
 fn main() -> Result<(), Box<dyn Error>>{
@@ -27,7 +30,7 @@ fn main() -> Result<(), Box<dyn Error>>{
     let input_yaml = YamlLoader::load_from_str(&input_str)?;
     if let Some(doc) = input_yaml.first() {
         let doc = model::Input::from(doc)?;
-        let cutlist = cutlist::compute(&doc, 16)?;
+        let cutlist = cutlist::compute(&doc, opt.attempts)?;
 
         if opt.visualize {
             // kick off some macroquad vis of the cutlist
