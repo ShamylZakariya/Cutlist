@@ -9,7 +9,7 @@ use structopt::StructOpt;
 use yaml_rust::YamlLoader;
 
 mod model;
-mod cutlist;
+mod solver;
 mod visualizer;
 
 #[derive(StructOpt,Debug)]
@@ -19,6 +19,9 @@ pub struct Options {
 
     #[structopt(short, long)]
     pub visualize: bool,
+
+    #[structopt(short, long, default_value = "0")]
+    pub attempts: usize
 }
 
 fn main() -> Result<(), Box<dyn Error>>{
@@ -28,7 +31,7 @@ fn main() -> Result<(), Box<dyn Error>>{
     let input_yaml = YamlLoader::load_from_str(&input_str)?;
     if let Some(doc) = input_yaml.first() {
         let doc = model::Input::from(doc)?;
-        if let Some(cutlist) = cutlist::compute(&doc) {
+        if let Some(cutlist) = solver::compute(&doc, opt.attempts) {
             if opt.visualize {
                 visualizer::show(cutlist);
             }

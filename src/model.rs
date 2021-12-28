@@ -50,7 +50,7 @@ pub struct Cut {
     pub length: f32,
     pub width: f32,
     pub count: i32,
-    pub name: String, 
+    pub name: String,
 }
 
 impl PartialEq for Cut {
@@ -102,7 +102,7 @@ impl Cut {
 
 #[derive(Debug, Clone)]
 pub struct Input {
-    pub margin: f32,
+    pub spacing: f32,
     pub boards: Vec<Board>,
     pub cutlist: Vec<Cut>,
 }
@@ -110,15 +110,15 @@ pub struct Input {
 impl Input {
     pub fn from(doc:&Yaml) -> Result<Input> {
         Ok(Self {
-            margin: Self::margin(doc)?,
+            spacing: Self::spacing(doc)?,
             boards: Self::boards(doc)?,
             cutlist: Self::cutlist(doc)?,
         })
     }
 
-    fn margin(doc: &Yaml) -> Result<f32> {
-        if let Some(margin) = doc["margin"].as_f64() {
-            Ok(margin as f32)
+    fn spacing(doc: &Yaml) -> Result<f32> {
+        if let Some(spacing) = doc["spacing"].as_f64() {
+            Ok(spacing as f32)
         } else {
             Ok(0f32)
         }

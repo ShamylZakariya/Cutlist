@@ -1,4 +1,6 @@
 use itertools::Itertools;
+use rand::{thread_rng, prelude::SliceRandom};
+
 
 use crate::model;
 
@@ -7,6 +9,25 @@ pub struct Cut {
     pub length: f32,
     pub width: f32,
     pub id: String,
+}
+
+impl PartialEq for Cut {
+    fn eq(&self, other: &Self) -> bool {
+        self.length == other.length && self.width == other.width && self.id == other.id
+    }
+}
+
+impl Eq for Cut {}
+
+impl std::hash::Hash for Cut {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        let length = (self.length * 512f32).floor() as i64;
+        let width = (self.width * 512f32).floor() as i64;
+
+        length.hash(state);
+        width.hash(state);
+        self.id.hash(state);
+    }
 }
 
 impl From<&model::Cut> for Cut {
@@ -155,51 +176,17 @@ impl Board {
     }
 }
 
-fn score(cutlist: &[Board]) -> f32 {
-    let mut total_score: f32 = 1f32;
-    for board in cutlist {
-        total_score *= board.score();
-    }
-    total_score
+fn score(boards: &[Board]) -> f32 {
+    boards.iter().fold(1f32, |acc, board| acc * board.score())
 }
 
-pub fn compute(model: &model::Input) -> Option<Vec<Board>> {
-    let mut results = vec![];
-    let boards: Vec<Board> = model.boards.iter().map(|board| board.into()).collect();
-    let cuts: Vec<Cut> = model.cutlist.iter().map(|cut| cut.into()).collect();
-    let mut attempts: i32 = 0;
-
-    for cutlist in cuts.iter().permutations(cuts.len()) {
-        attempts += 1;
-        if let Some(result) = perform_cutlist_allocation(&boards, &cutlist) {
-            results.push(result);
-        }
-    }
-
-    let scores: Vec<_> = results
-        .iter()
-        .map(|solution| score(solution))
-        .map(|score| score.to_string())
-        .collect();
-
-    println!(
-        "Out of {} attempts, found: {} viable solutions, with scores: [{}]",
-        attempts,
-        results.len(),
-        scores.join(", ")
-    );
-
-    // sort results by a scoring metric and pick the best
-    results.sort_by(|a, b| score(a).partial_cmp(&score(b)).unwrap());
-
-    if let Some(result) = results.first() {
-        Some(result.clone())
-    } else {
-        None
-    }
+fn is_a_solution_possible(boards: &[Board], cutlist: &[Cut]) -> bool {
+    let total_board_area = boards.iter().map(|board| board.length * board.width).fold(0f32, |acc, area| acc + area);
+    let total_cutlist_area = cutlist.iter().map(|cut| cut.width * cut.length).fold(0f32, |acc, area| acc + area);
+    total_cutlist_area <= total_board_area
 }
 
-fn perform_cutlist_allocation(boards: &[Board], cutlist: &[&Cut]) -> Option<Vec<Board>> {
+fn perform_cutlist_allocation(boards: &[Board], cutlist: &[&Cut], spacing: f32) -> Option<Vec<Board>> {
     let mut boards = boards.to_vec();
     let mut cuts = cutlist.to_vec();
     let mut orphaned_cuts = Vec::new();
@@ -219,6 +206,78 @@ fn perform_cutlist_allocation(boards: &[Board], cutlist: &[&Cut]) -> Option<Vec<
 
     if orphaned_cuts.is_empty() {
         Some(boards)
+    } else {
+        None
+    }
+}
+
+fn factorial(x:u32) -> u128 {
+    let mut f = 1u128;
+    for i in 1..=x as u128 {
+        f = f * i;
+    }
+    f
+}
+
+/// Atempts to find a best solution for computing the cutlist for the given model.
+pub fn compute(model: &model::Input, attempts: usize) -> Option<Vec<Board>> {
+    let mut results = vec![];
+    let boards: Vec<Board> = model.boards.iter().map(|board| board.into()).collect();
+
+    let mut cutlist: Vec<Cut> = Vec::new();
+    for cut_model in &model.cutlist {
+        for _ in 0 .. cut_model.count {
+            cutlist.push(cut_model.into());
+        }
+    }
+
+    if !is_a_solution_possible(&boards, &cutlist) {
+        println!("No solution is possible");
+        return None
+    }
+
+    if attempts == 0 {
+        println!("We have {} cuts, which will be {} permutations...", cutlist.len(), factorial(cutlist.len() as u32));
+
+        let mut attempts: usize = 0;
+        for cutlist in cutlist.iter().permutations(cutlist.len()).unique() {
+            attempts += 1;
+            if let Some(result) = perform_cutlist_allocation(&boards, &cutlist, model.spacing) {
+                println!("Found a result");
+                results.push(result);
+            }
+        }
+    } else {
+        let mut rng = thread_rng();
+        for _ in 0..attempts {
+            cutlist.shuffle(&mut rng);
+            let cutlist_ref: Vec<&Cut> = cutlist.iter().collect();
+            if let Some(result) = perform_cutlist_allocation(&boards, &cutlist_ref, model.spacing) {
+                println!("Found a result");
+                results.push(result);
+            }
+        }
+    }
+
+    let scores: Vec<_> = results
+        .iter()
+        .map(|solution| score(solution))
+        .map(|score| score.to_string())
+        .collect();
+
+    println!(
+        "Out of {} attempts, found: {} viable solutions, with scores: [{}]",
+        attempts,
+        results.len(),
+        scores.join(", ")
+    );
+
+    // sort results by score and pick the best
+    results.sort_by(|a, b| score(a).partial_cmp(&score(b)).unwrap());
+
+    if let Some(result) = results.last() {
+        println!("Best result had score: {}", score(result));
+        Some(result.clone())
     } else {
         None
     }

@@ -1,5 +1,5 @@
-use crate::cutlist;
+use crate::solver;
 
-pub fn show(cutlist: Vec<cutlist::Board>) {
+pub fn show(cutlist: Vec<solver::Board>) {
 
 }
