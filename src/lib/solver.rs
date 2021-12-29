@@ -1,8 +1,9 @@
 use itertools::Itertools;
 use rand::{thread_rng, prelude::SliceRandom};
 
+use super::model;
 
-use crate::model;
+
 
 #[derive(Clone)]
 pub struct Cut {

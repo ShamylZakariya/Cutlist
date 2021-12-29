@@ -1,18 +1,14 @@
-
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
+mod lib;
 
+use lib::{model, solver, visualizer};
 use std::{error::Error, fs};
-
 use structopt::StructOpt;
 use yaml_rust::YamlLoader;
 
-mod model;
-mod solver;
-mod visualizer;
-
-#[derive(StructOpt,Debug)]
+#[derive(StructOpt, Debug)]
 pub struct Options {
     #[structopt(short, long, default_value = "input.yaml")]
     pub input: String,
@@ -21,10 +17,10 @@ pub struct Options {
     pub visualize: bool,
 
     #[structopt(short, long, default_value = "0")]
-    pub attempts: usize
+    pub attempts: usize,
 }
 
-fn main() -> Result<(), Box<dyn Error>>{
+fn main() -> Result<(), Box<dyn Error>> {
     let opt = Options::from_args();
 
     let input_str = fs::read_to_string(opt.input)?;
