@@ -1,10 +1,10 @@
 ---
   spacing: 0.25
   boards:
-    - 96x8.0:A
-    - 96x8.0:B
-    - 96x8.0:C
-    - 96x8.0:D
+    # this describes board dimensions *available* not on-hand. The solver will
+    # say how many boards of type A & B are needed, and how to lay the cutlist out.
+    - 96x8:A
+    - 96x6:B
   cutlist:
     - 4@25x2:Leg
     - 3@14x5:Top Table Slats

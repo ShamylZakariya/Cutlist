@@ -16,7 +16,7 @@ pub struct Options {
     #[structopt(short, long)]
     pub visualize: bool,
 
-    #[structopt(short, long, default_value = "0")]
+    #[structopt(short, long, default_value = "1024")]
     pub attempts: usize,
 }
 

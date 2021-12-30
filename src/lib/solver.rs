@@ -1,11 +1,8 @@
-use itertools::Itertools;
-use rand::{thread_rng, prelude::SliceRandom};
+use rand::{prelude::SliceRandom, thread_rng};
 
 use super::model;
 
-
-
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Cut {
     pub length: f32,
     pub width: f32,
@@ -51,6 +48,7 @@ impl Cut {
     }
 }
 
+/// Represents a stack of cuts which can be easily crosscut from a board, and then ripped and crosscut to dimension.
 #[derive(Clone)]
 pub struct CutStack {
     pub cuts: Vec<Cut>,
@@ -90,6 +88,16 @@ impl CutStack {
         }
         area
     }
+
+    // returns a score representing how well used the stack is,
+    // where 1 means perfect allocaiton without any waste.
+    fn score(&self) -> f32 {
+        if !self.cuts.is_empty() {
+            self.used_area() / self.required_area()
+        } else {
+            0f32
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -112,6 +120,20 @@ impl From<&model::Board> for Board {
 }
 
 impl Board {
+
+    fn can_accept(&self, cut: &Cut) -> bool {
+        if cut.length > self.length || cut.width > self.width {
+            // cut simply will not fit this board
+            false
+        } else if let Some(_) = self.best_stack_for_cut(cut) {
+            true
+        } else if self.unallocated_length() >= cut.length {
+            true
+        } else {
+            false
+        }
+    }
+
     // if the board can take this cut into its allocation, take it in, returning true, otherwise return false
     fn accept(&mut self, cut: &Cut) -> bool {
         if cut.length > self.length || cut.width > self.width {
@@ -121,8 +143,8 @@ impl Board {
             // if we found a viable stack for this cut att it
             self.stacks[best_stack_index].add(cut.clone());
             true
-        } else if self.total_allocated_length() <= cut.length {
-            // see if we can create a new stack
+        } else if self.unallocated_length() >= cut.length {
+            // Create a new stack for this cut
             let mut new_stack = CutStack::new();
             new_stack.add(cut.clone());
             self.stacks.push(new_stack);
@@ -132,11 +154,13 @@ impl Board {
         }
     }
 
-    // returns the total length of the board consumed by its stacks
-    fn total_allocated_length(&self) -> f32 {
-        self.stacks
-            .iter()
-            .fold(0f32, |acc, stack| acc + stack.length())
+    // returns the total length unused by stacks
+    fn unallocated_length(&self) -> f32 {
+        self.length
+            - self
+                .stacks
+                .iter()
+                .fold(0f32, |acc, stack| acc + stack.length())
     }
 
     fn best_stack_for_cut(&self, cut: &Cut) -> Option<usize> {
@@ -157,106 +181,161 @@ impl Board {
         best_stack_index
     }
 
-    /// Returns a scoring value from 0 to 1 representing how well utilized the board is; the metric is
-    /// based on how densely packed the cuts are, and how much usable scrap would be left over.
-    fn score(&self) -> f32 {
-        let board_area = self.length * self.width;
-        let required_area: f32 = self.stacks.iter().map(|s| s.required_area()).sum();
-        let used_area: f32 = self.stacks.iter().map(|s| s.used_area()).sum();
-        let scrap = board_area - required_area;
-
-        if required_area > 0f32 {
-            let density = (used_area / required_area).clamp(0f32, 1f32);
-            let scrap_density = scrap / board_area;
-            density * scrap_density // total score
+    fn score(&self) -> Option<f32> {
+        if !self.stacks.is_empty() {
+            Some(
+                self.stacks
+                    .iter()
+                    .fold(1f32, |acc, stack| acc * stack.score()),
+            )
         } else {
-            // an unused board is pure scrap, so it's worth a lot
-            // TODO: Is this the right way to score?
-            1f32
+            None
         }
     }
 }
 
 fn score(boards: &[Board]) -> f32 {
-    boards.iter().fold(1f32, |acc, board| acc * board.score())
+    boards
+        .iter()
+        .map(|board| board.score())
+        .flatten()
+        .fold(1f32, |acc, score| acc * score)
 }
 
-fn is_a_solution_possible(boards: &[Board], cutlist: &[Cut]) -> bool {
-    let total_board_area = boards.iter().map(|board| board.length * board.width).fold(0f32, |acc, area| acc + area);
-    let total_cutlist_area = cutlist.iter().map(|cut| cut.width * cut.length).fold(0f32, |acc, area| acc + area);
-    total_cutlist_area <= total_board_area
-}
+fn is_a_solution_possible(model: &model::Input) -> bool {
+    // if any cut in the cutlist is wider than available board stock,
+    // no solution is possible!
 
-fn perform_cutlist_allocation(boards: &[Board], cutlist: &[&Cut], spacing: f32) -> Option<Vec<Board>> {
-    let mut boards = boards.to_vec();
-    let mut cuts = cutlist.to_vec();
-    let mut orphaned_cuts = Vec::new();
-
-    while let Some(cut) = cuts.pop() {
-        let mut orphaned = true;
-        for board in &mut boards {
-            if board.accept(&cut) {
-                orphaned = false;
-                break;
+    for cut in &model.cutlist {
+        for board in &model.boards {
+            if cut.width > board.width {
+                return false;
             }
         }
-        if orphaned {
-            orphaned_cuts.push(cut);
+    }
+
+    true
+}
+
+struct CutRanges {
+    longest: f32,
+    shortest: f32,
+    widest: f32,
+    narrowest: f32,
+}
+
+/// Returns the index of the best board in `boards` to attempt to insert the cut, or None
+fn best_board_for_cut(boards: &[Board], cut: &Cut, cut_ranges: &CutRanges) -> Option<usize> {
+
+    // naive approach - find first board that could accept this cut
+    // TODO: Maybe try to put narrow cuts in narrow boards...
+    for (i, board) in boards.iter().enumerate() {
+        if board.can_accept(cut) {
+            return Some(i);
         }
     }
 
-    if orphaned_cuts.is_empty() {
-        Some(boards)
-    } else {
-        None
-    }
+    None
 }
 
-fn factorial(x:u32) -> u128 {
-    let mut f = 1u128;
-    for i in 1..=x as u128 {
-        f = f * i;
+/// Vends a new board from the model's board options best suited for the specified cut
+fn vend_new_board_for_cut(model: &model::Input, cut: &Cut, cut_ranges: &CutRanges) -> Option<Board> {
+
+    // find first board wide enough for this cut
+    let mut board_models = model.boards.to_vec();
+    board_models.sort_by(|a,b| a.width.partial_cmp(&b.width).unwrap());
+
+    for board_model in &board_models {
+        if board_model.width > cut.width && board_model.length > cut.length {
+            return Some(board_model.into());
+        }
     }
-    f
+
+    None
+}
+
+fn generate(model: &model::Input, cutlist: &[Cut], cut_ranges: &CutRanges) -> Option<Vec<Board>> {
+    let mut cutlist = cutlist.to_vec();
+
+    let mut boards: Vec<Board> = Vec::new();
+
+    while let Some(cut) = cutlist.pop() {
+        // Check if there's a decent candidate board
+        if let Some(board_index) = best_board_for_cut(&boards, &cut, cut_ranges) {
+            if boards[board_index].accept(&cut) {
+                continue;
+            }
+        }
+
+        // See if any of the boards will accept this cut
+        for (i, board) in boards.iter_mut().enumerate() {
+            if board.accept(&cut) {
+                continue;
+            }
+        }
+
+        // Looks like we need to vend a new board
+        if let Some(mut new_board) = vend_new_board_for_cut(model, &cut, cut_ranges) {
+            if new_board.accept(&cut) {
+                boards.push(new_board);
+            } else {
+                // This really should not happen as the `is_solution_possible` function should
+                // prevent this function from ever running if the model is insufficient to compute a solution.
+                return None;
+            }
+        } else {
+            // This also should not occur for same reason as above - `is_solution_possible` should
+            // guard against this occurance.
+            return None;
+        }
+    }
+
+    Some(boards)
 }
 
 /// Atempts to find a best solution for computing the cutlist for the given model.
 pub fn compute(model: &model::Input, attempts: usize) -> Option<Vec<Board>> {
-    let mut results = vec![];
-    let boards: Vec<Board> = model.boards.iter().map(|board| board.into()).collect();
-
-    let mut cutlist: Vec<Cut> = Vec::new();
-    for cut_model in &model.cutlist {
-        for _ in 0 .. cut_model.count {
-            cutlist.push(cut_model.into());
-        }
+    if !is_a_solution_possible(model) {
+        return None;
     }
 
-    if !is_a_solution_possible(&boards, &cutlist) {
-        println!("No solution is possible");
-        return None
-    }
-
-    if attempts == 0 {
-        println!("We have {} cuts, which will be {} permutations...", cutlist.len(), factorial(cutlist.len() as u32));
-
-        let mut attempts: usize = 0;
-        for cutlist in cutlist.iter().permutations(cutlist.len()).unique() {
-            attempts += 1;
-            if let Some(result) = perform_cutlist_allocation(&boards, &cutlist, model.spacing) {
-                println!("Found a result");
-                results.push(result);
+    // Create a vector of our required Cuts, sorted from longest to shortest
+    let (mut cutlist, cut_ranges) = {
+        let mut cutlist: Vec<Cut> = Vec::new();
+        let mut longest: f32 = 0f32;
+        let mut widest: f32 = 0f32;
+        let mut shortest: f32 = f32::MAX;
+        let mut narrowest: f32 = f32::MAX;
+        for cut_model in &model.cutlist {
+            for _ in 0..cut_model.count {
+                longest = longest.max(cut_model.length);
+                widest = widest.max(cut_model.width);
+                shortest = shortest.min(cut_model.length);
+                narrowest = narrowest.min(cut_model.width);
+                cutlist.push(cut_model.into());
             }
         }
-    } else {
-        let mut rng = thread_rng();
-        for _ in 0..attempts {
-            cutlist.shuffle(&mut rng);
-            let cutlist_ref: Vec<&Cut> = cutlist.iter().collect();
-            if let Some(result) = perform_cutlist_allocation(&boards, &cutlist_ref, model.spacing) {
-                println!("Found a result");
-                results.push(result);
-            }
+
+        (
+            cutlist,
+            CutRanges {
+                longest,
+                shortest,
+                widest,
+                narrowest,
+            },
+        )
+    };
+
+    let mut results = Vec::new();
+    let mut rng = thread_rng();
+
+    println!("Running {} attempts...", attempts);
+    for attempt in 0..attempts {
+        cutlist.shuffle(&mut rng);
+        if let Some(result) = generate(model, &cutlist, &cut_ranges) {
+            println!("\tAttempt {} found a solution with score: {}", attempt, score(&result));
+            results.push(result);
         }
     }
 
@@ -267,7 +346,7 @@ pub fn compute(model: &model::Input, attempts: usize) -> Option<Vec<Board>> {
         .collect();
 
     println!(
-        "Out of {} attempts, found: {} viable solutions, with scores: [{}]",
+        "Finished!\nOut of {} attempts, found: {} viable solutions, with scores: [{}]",
         attempts,
         results.len(),
         scores.join(", ")
