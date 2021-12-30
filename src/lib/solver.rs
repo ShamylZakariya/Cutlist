@@ -120,18 +120,11 @@ impl From<&model::Board> for Board {
 }
 
 impl Board {
-
     fn can_accept(&self, cut: &Cut) -> bool {
-        if cut.length > self.length || cut.width > self.width {
-            // cut simply will not fit this board
-            false
-        } else if let Some(_) = self.best_stack_for_cut(cut) {
-            true
-        } else if self.unallocated_length() >= cut.length {
-            true
-        } else {
-            false
-        }
+        self.length >= cut.length
+            && self.width >= cut.width
+            && self.best_stack_for_cut(cut).is_some()
+            && self.unallocated_length() >= cut.length
     }
 
     // if the board can take this cut into its allocation, take it in, returning true, otherwise return false
@@ -226,7 +219,6 @@ struct CutRanges {
 
 /// Returns the index of the best board in `boards` to attempt to insert the cut, or None
 fn best_board_for_cut(boards: &[Board], cut: &Cut, cut_ranges: &CutRanges) -> Option<usize> {
-
     // naive approach - find first board that could accept this cut
     // TODO: Maybe try to put narrow cuts in narrow boards...
     for (i, board) in boards.iter().enumerate() {
@@ -239,11 +231,14 @@ fn best_board_for_cut(boards: &[Board], cut: &Cut, cut_ranges: &CutRanges) -> Op
 }
 
 /// Vends a new board from the model's board options best suited for the specified cut
-fn vend_new_board_for_cut(model: &model::Input, cut: &Cut, cut_ranges: &CutRanges) -> Option<Board> {
-
+fn vend_new_board_for_cut(
+    model: &model::Input,
+    cut: &Cut,
+    cut_ranges: &CutRanges,
+) -> Option<Board> {
     // find first board wide enough for this cut
     let mut board_models = model.boards.to_vec();
-    board_models.sort_by(|a,b| a.width.partial_cmp(&b.width).unwrap());
+    board_models.sort_by(|a, b| a.width.partial_cmp(&b.width).unwrap());
 
     for board_model in &board_models {
         if board_model.width > cut.width && board_model.length > cut.length {
@@ -294,7 +289,11 @@ fn generate(model: &model::Input, cutlist: &[Cut], cut_ranges: &CutRanges) -> Op
 }
 
 /// Atempts to find a best solution for computing the cutlist for the given model.
-pub fn compute(model: &model::Input, attempts: usize) -> Option<Vec<Board>> {
+pub fn compute(
+    model: &model::Input,
+    attempts: usize,
+    result_count: usize,
+) -> Option<Vec<Vec<Board>>> {
     if !is_a_solution_possible(model) {
         return None;
     }
@@ -330,34 +329,19 @@ pub fn compute(model: &model::Input, attempts: usize) -> Option<Vec<Board>> {
     let mut results = Vec::new();
     let mut rng = thread_rng();
 
-    println!("Running {} attempts...", attempts);
     for attempt in 0..attempts {
         cutlist.shuffle(&mut rng);
         if let Some(result) = generate(model, &cutlist, &cut_ranges) {
-            println!("\tAttempt {} found a solution with score: {}", attempt, score(&result));
             results.push(result);
         }
     }
 
-    let scores: Vec<_> = results
-        .iter()
-        .map(|solution| score(solution))
-        .map(|score| score.to_string())
-        .collect();
-
-    println!(
-        "Finished!\nOut of {} attempts, found: {} viable solutions, with scores: [{}]",
-        attempts,
-        results.len(),
-        scores.join(", ")
-    );
-
-    // sort results by score and pick the best
-    results.sort_by(|a, b| score(a).partial_cmp(&score(b)).unwrap());
-
-    if let Some(result) = results.last() {
-        println!("Best result had score: {}", score(result));
-        Some(result.clone())
+    if !results.is_empty() {
+        // sort results by score with best at front, and then return the desired count
+        results.sort_by(|a, b| score(b).partial_cmp(&score(a)).unwrap());
+        let result_count = result_count.min(results.len());
+        println!("Found {} viable solutions", result_count);
+        Some(results[0..result_count].to_vec())
     } else {
         None
     }

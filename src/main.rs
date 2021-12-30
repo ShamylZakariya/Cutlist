@@ -18,6 +18,9 @@ pub struct Options {
 
     #[structopt(short, long, default_value = "1024")]
     pub attempts: usize,
+
+    #[structopt(short, long, default_value = "1")]
+    pub count: usize,
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -27,9 +30,12 @@ fn main() -> Result<(), Box<dyn Error>> {
     let input_yaml = YamlLoader::load_from_str(&input_str)?;
     if let Some(doc) = input_yaml.first() {
         let doc = model::Input::from(doc)?;
-        if let Some(cutlist) = solver::compute(&doc, opt.attempts) {
+        if let Some(cutlist) = solver::compute(&doc, opt.attempts, opt.count) {
             if opt.visualize {
-                visualizer::show(cutlist);
+                if let Some(cutlist) = cutlist.first() {
+                    // TODO: We need to pass all results to visualizer and provide a UX for paging through them
+                    visualizer::show(cutlist);
+                }
             }
         }
     }
