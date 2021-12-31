@@ -35,12 +35,12 @@ fn test_cutlist() -> Vec<solver::Board> {
                     solver::Cut {
                         length: 18f32,
                         width: 3f32,
-                        id: "Apron".to_string(),
+                        id: "Apron 1".to_string(),
                     },
                     solver::Cut {
                         length: 18f32,
                         width: 3f32,
-                        id: "Apron".to_string(),
+                        id: "Apron 2".to_string(),
                     },
                 ],
             },
@@ -69,7 +69,7 @@ fn test_cutlist() -> Vec<solver::Board> {
 
 fn window_conf() -> Conf {
     Conf {
-        window_title: String::from("Texture Packer"),
+        window_title: String::from("Cutlist"),
         window_width: 768,
         window_height: 768,
         fullscreen: false,

@@ -330,10 +330,17 @@ pub fn compute(
     let mut results = Vec::new();
     let mut rng = thread_rng();
 
-    for attempt in 0..attempts {
-        cutlist.shuffle(&mut rng);
+    if attempts == 0 {
+        cutlist.sort_by(|a, b| b.length.partial_cmp(&a.length).unwrap());
         if let Some(result) = generate(model, &cutlist, &cut_ranges) {
             results.push(result);
+        }
+    } else {
+        for attempt in 0..attempts {
+            cutlist.shuffle(&mut rng);
+            if let Some(result) = generate(model, &cutlist, &cut_ranges) {
+                results.push(result);
+            }
         }
     }
 
