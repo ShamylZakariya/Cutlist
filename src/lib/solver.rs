@@ -63,7 +63,7 @@ impl CutStack {
         self.cuts.push(cut);
     }
 
-    fn length(&self) -> f32 {
+    pub fn length(&self) -> f32 {
         let mut max_length = 0f32;
         for s in &self.cuts {
             max_length = max_length.max(s.length)
@@ -71,7 +71,7 @@ impl CutStack {
         max_length
     }
 
-    fn width(&self) -> f32 {
+    pub fn width(&self) -> f32 {
         self.cuts.iter().map(|s| s.width).sum()
     }
 
