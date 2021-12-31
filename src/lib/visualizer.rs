@@ -2,7 +2,6 @@ use macroquad::prelude::*;
 
 use super::solver;
 
-const SCALE: f32 = 16f32;
 const PADDING: f32 = 10f32;
 const FONT_SIZE: f32 = 16f32;
 const BOARD_COLOR: Color = Color::new(0f32, 0f32, 0f32, 0.1);
@@ -28,8 +27,8 @@ struct Label {
     anchor: LabelAnchor,
 }
 
-fn render_board(board: &solver::Board, top_left: Vec2) -> Vec<Label> {
-    let stroke_thickness = 1f32 / SCALE;
+fn render_board(board: &solver::Board, top_left: Vec2, scale: f32) -> Vec<Label> {
+    let stroke_thickness = 1f32 / scale;
     let mut labels = Vec::new();
 
     // Draw the board
@@ -91,9 +90,9 @@ fn render_board(board: &solver::Board, top_left: Vec2) -> Vec<Label> {
         // draw the crosscut
         draw_line(
             stack_origin.x + stack.length(),
-            stack_origin.y - PADDING / 4f32,
+            top_left.y - (PADDING / 8f32),
             stack_origin.x + stack.length(),
-            stack_origin.y + stack.width() + PADDING / 4f32,
+            top_left.y + board.width + (PADDING / 8f32),
             2f32 * stroke_thickness,
             CROSSCUT_LINE_COLOR,
         );
@@ -105,6 +104,10 @@ fn render_board(board: &solver::Board, top_left: Vec2) -> Vec<Label> {
 }
 
 pub async fn show(cutlist: &[solver::Board]) {
+    let mut scale = 16f32;
+    let mut origin = Vec2::new(PADDING, PADDING);
+    let mut mouse_down_position:Option<Vec2> = None;
+
     loop {
         clear_background(WHITE);
 
@@ -114,16 +117,16 @@ pub async fn show(cutlist: &[solver::Board]) {
         set_camera(&Camera2D::from_display_rect(Rect::new(
             0f32,
             0f32,
-            screen_width() / SCALE,
-            screen_height() / SCALE,
+            screen_width() / scale,
+            screen_height() / scale,
         )));
 
-        let mut top_left = Vec2::new(PADDING, PADDING);
         let mut all_labels = Vec::new();
+        let mut board_y_offset = 0f32;
         for board in cutlist {
-            let mut board_labels = render_board(board, top_left);
+            let mut board_labels = render_board(board, origin + Vec2::new(0f32, board_y_offset), scale);
             all_labels.append(&mut board_labels);
-            top_left.y += board.width + PADDING;
+            board_y_offset += board.width + PADDING;
         }
         pop_camera_state();
 
@@ -132,26 +135,44 @@ pub async fn show(cutlist: &[solver::Board]) {
             match label.anchor {
                 LabelAnchor::Left => draw_text(
                     &label.text,
-                    (label.position.x * SCALE).floor(),
-                    ((label.position.y * SCALE) - measure.height * 0.25).floor(),
+                    (label.position.x * scale).floor(),
+                    ((label.position.y * scale) - measure.height * 0.25).floor(),
                     FONT_SIZE,
                     label.color,
                 ),
                 LabelAnchor::Center => draw_text(
                     &label.text,
-                    ((label.position.x * SCALE) - measure.width * 0.5).floor(),
-                    ((label.position.y * SCALE) + (measure.height - measure.offset_y) * 0.5).floor(),
+                    ((label.position.x * scale) - measure.width * 0.5).floor(),
+                    ((label.position.y * scale) + (measure.height - measure.offset_y) * 0.5).floor(),
                     FONT_SIZE,
                     label.color,
                 ),
                 LabelAnchor::Right => draw_text(
                     &label.text,
-                    ((label.position.x * SCALE) - measure.width).floor(),
-                    ((label.position.y * SCALE) - measure.height * 0.25).floor(),
+                    ((label.position.x * scale) - measure.width).floor(),
+                    ((label.position.y * scale) - measure.height * 0.25).floor(),
                     FONT_SIZE,
                     label.color,
                 ),
             };
+        }
+
+        // Input
+
+        let (_, mouse_wheel_y) = mouse_wheel();
+        let (mouse_x, mouse_y) = mouse_position();
+        let left_mouse_down = is_mouse_button_down(MouseButton::Left);
+        scale = (scale + (mouse_wheel_y * 1f32)).clamp(1f32, 64f32);
+
+        if left_mouse_down {
+            if let Some(mouse_down_position) = mouse_down_position {
+                let mouse_movement = Vec2::new(mouse_x, mouse_y) - mouse_down_position;
+                origin += mouse_movement / scale;
+                println!("mouse_movement: {:?} scale: {}", mouse_movement, scale);
+            }
+            mouse_down_position = Some(Vec2::new(mouse_x, mouse_y));
+        } else {
+            mouse_down_position = None;
         }
 
         next_frame().await

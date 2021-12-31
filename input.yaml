@@ -7,9 +7,9 @@
     - 96x6:B
   cutlist:
     - 4@25x2:Leg
-    - 3@14x5:Top Table Slats
+    - 3@14x5:Top Table Slat
     - 4@4x.75:Apron Mount
     - 4@20x3:Top Table Edges
-    - 4@16x3:Lower Table Edges
-    - 2@10x5:Lower Table Slats
+    - 4@16x3:Lower Table Edge
+    - 2@10x5:Lower Table Slat
     - 2@12x4:Apron

@@ -1,4 +1,5 @@
-use rand::{prelude::SliceRandom, thread_rng};
+use rand::{prelude::*};
+use rand_pcg::Pcg64;
 
 use super::model;
 
@@ -28,17 +29,15 @@ impl std::hash::Hash for Cut {
     }
 }
 
-impl From<&model::Cut> for Cut {
-    fn from(cut: &model::Cut) -> Self {
+impl Cut {
+    fn from(cut: &model::Cut, outset: f32) -> Cut {
         Cut {
-            length: cut.length,
-            width: cut.width,
+            length: cut.length + outset,
+            width: cut.width + outset,
             id: cut.name.clone(),
         }
     }
-}
 
-impl Cut {
     fn rotate(self) -> Cut {
         Cut {
             length: self.width,
@@ -312,7 +311,7 @@ pub fn compute(
                 widest = widest.max(cut_model.width);
                 shortest = shortest.min(cut_model.length);
                 narrowest = narrowest.min(cut_model.width);
-                cutlist.push(cut_model.into());
+                cutlist.push(Cut::from(cut_model, model.spacing));
             }
         }
 
@@ -328,7 +327,6 @@ pub fn compute(
     };
 
     let mut results = Vec::new();
-    let mut rng = thread_rng();
 
     if attempts == 0 {
         cutlist.sort_by(|a, b| b.length.partial_cmp(&a.length).unwrap());
@@ -336,6 +334,9 @@ pub fn compute(
             results.push(result);
         }
     } else {
+        // shuffle approach
+        let mut rng = Pcg64::seed_from_u64(12345);
+
         for attempt in 0..attempts {
             cutlist.shuffle(&mut rng);
             if let Some(result) = generate(model, &cutlist, &cut_ranges) {

@@ -20,6 +20,8 @@
                 }
             },
             "args": [
+                "--attempts",
+                "4096"
             ],
             "cwd": "${workspaceFolder}"
         },
