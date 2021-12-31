@@ -254,18 +254,18 @@ fn generate(model: &model::Input, cutlist: &[Cut], cut_ranges: &CutRanges) -> Op
 
     let mut boards: Vec<Board> = Vec::new();
 
-    while let Some(cut) = cutlist.pop() {
+    'cutlist: while let Some(cut) = cutlist.pop() {
         // Check if there's a decent candidate board
         if let Some(board_index) = best_board_for_cut(&boards, &cut, cut_ranges) {
             if boards[board_index].accept(&cut) {
-                continue;
+                continue 'cutlist;
             }
         }
 
         // See if any of the boards will accept this cut
         for (i, board) in boards.iter_mut().enumerate() {
             if board.accept(&cut) {
-                continue;
+                continue 'cutlist;
             }
         }
 
@@ -273,6 +273,7 @@ fn generate(model: &model::Input, cutlist: &[Cut], cut_ranges: &CutRanges) -> Op
         if let Some(mut new_board) = vend_new_board_for_cut(model, &cut, cut_ranges) {
             if new_board.accept(&cut) {
                 boards.push(new_board);
+                continue 'cutlist;
             } else {
                 // This really should not happen as the `is_solution_possible` function should
                 // prevent this function from ever running if the model is insufficient to compute a solution.
