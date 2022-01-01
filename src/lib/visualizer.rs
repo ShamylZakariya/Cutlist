@@ -27,27 +27,52 @@ struct Label {
     anchor: LabelAnchor,
 }
 
+fn draw_rectangle_scaled(
+    top_left: Vec2,
+    size: Vec2,
+    scale: f32,
+    fill_color: Color,
+    stroke_color: Color,
+) {
+    draw_rectangle(
+        top_left.x * scale,
+        top_left.y * scale,
+        size.x * scale,
+        size.y * scale,
+        fill_color,
+    );
+    draw_rectangle_lines(
+        top_left.x * scale,
+        top_left.y * scale,
+        size.x * scale,
+        size.y * scale,
+        1f32,
+        stroke_color,
+    );
+}
+
+fn draw_line_scaled(start: Vec2, end: Vec2, scale: f32, color: Color) {
+    draw_line(
+        start.x * scale,
+        start.y * scale,
+        end.x * scale,
+        end.y * scale,
+        1f32,
+        color,
+    );
+}
+
 fn render_board(board: &solver::Board, top_left: Vec2, scale: f32) -> Vec<Label> {
-    let stroke_thickness = 1f32 / scale;
     let mut labels = Vec::new();
 
     // Draw the board
-    draw_rectangle(
-        top_left.x,
-        top_left.y,
-        board.length,
-        board.width,
+    draw_rectangle_scaled(
+        top_left,
+        Vec2::new(board.length, board.width),
+        scale,
         BOARD_COLOR,
-    );
-    draw_rectangle_lines(
-        top_left.x,
-        top_left.y,
-        board.length,
-        board.width,
-        stroke_thickness,
         BOARD_STROKE_COLOR,
     );
-
     labels.push(Label {
         text: format!("{} ({} by {})", board.id, board.length, board.width),
         position: top_left,
@@ -60,26 +85,20 @@ fn render_board(board: &solver::Board, top_left: Vec2, scale: f32) -> Vec<Label>
     for stack in &board.stacks {
         let mut cut_y = 0f32;
         for cut in &stack.cuts {
-            draw_rectangle(
-                stack_origin.x,
-                stack_origin.y + cut_y,
-                cut.length,
-                cut.width,
+            draw_rectangle_scaled(
+                Vec2::new(stack_origin.x, stack_origin.y + cut_y),
+                Vec2::new(cut.length, cut.width),
+                scale,
                 CUT_COLOR,
-            );
-
-            draw_rectangle_lines(
-                stack_origin.x,
-                stack_origin.y + cut_y,
-                cut.length,
-                cut.width,
-                stroke_thickness,
                 CUT_STROKE_COLOR,
             );
 
             labels.push(Label {
                 text: cut.id.clone(),
-                position: Vec2::new(stack_origin.x + cut.length / 2f32, stack_origin.y + cut_y + cut.width / 2f32),
+                position: Vec2::new(
+                    stack_origin.x + cut.length / 2f32,
+                    stack_origin.y + cut_y + cut.width / 2f32,
+                ),
                 color: WHITE,
                 anchor: LabelAnchor::Center,
             });
@@ -88,12 +107,16 @@ fn render_board(board: &solver::Board, top_left: Vec2, scale: f32) -> Vec<Label>
         }
 
         // draw the crosscut
-        draw_line(
-            stack_origin.x + stack.length(),
-            top_left.y - (PADDING / 8f32),
-            stack_origin.x + stack.length(),
-            top_left.y + board.width + (PADDING / 8f32),
-            2f32 * stroke_thickness,
+        draw_line_scaled(
+            Vec2::new(
+                stack_origin.x + stack.length(),
+                top_left.y - (PADDING / 8f32),
+            ),
+            Vec2::new(
+                stack_origin.x + stack.length(),
+                top_left.y + board.width + (PADDING / 8f32),
+            ),
+            scale,
             CROSSCUT_LINE_COLOR,
         );
 
@@ -110,33 +133,23 @@ fn draw_axis(at: Vec2, size: f32, color: Color) {
 
 pub async fn show(cutlist: &[solver::Board]) {
     let mut scale = 16f32;
-    let mut origin = Vec2::new(PADDING, PADDING);
-    let mut mouse_down_position:Option<Vec2> = None;
+    let mut origin = Vec2::new(0f32, 0f32);
+    let mut mouse_down_position: Option<Vec2> = None;
 
     loop {
         clear_background(WHITE);
 
         draw_text("Cutlist", 20.0, screen_height() - 20., 16.0, DARKGRAY);
-
-        draw_axis(origin, 10f32, GREEN);
-        draw_axis(origin * scale, 10f32, DARKGREEN);
-
-        push_camera_state();
-        set_camera(&Camera2D::from_display_rect(Rect::new(
-            0f32,
-            0f32,
-            screen_width() / scale,
-            screen_height() / scale,
-        )));
+        draw_axis(origin * scale, 10f32, GREEN);
 
         let mut all_labels = Vec::new();
         let mut board_y_offset = 0f32;
         for board in cutlist {
-            let mut board_labels = render_board(board, origin + Vec2::new(0f32, board_y_offset), scale);
+            let mut board_labels =
+                render_board(board, origin + Vec2::new(0f32, board_y_offset), scale);
             all_labels.append(&mut board_labels);
             board_y_offset += board.width + PADDING;
         }
-        pop_camera_state();
 
         for label in &all_labels {
             let measure = measure_text(&label.text, None, FONT_SIZE as u16, 1f32);
@@ -151,7 +164,8 @@ pub async fn show(cutlist: &[solver::Board]) {
                 LabelAnchor::Center => draw_text(
                     &label.text,
                     ((label.position.x * scale) - measure.width * 0.5).floor(),
-                    ((label.position.y * scale) + (measure.height - measure.offset_y) * 0.5).floor(),
+                    ((label.position.y * scale) + (measure.height - measure.offset_y) * 0.5)
+                        .floor(),
                     FONT_SIZE,
                     label.color,
                 ),
@@ -193,7 +207,7 @@ pub async fn show(cutlist: &[solver::Board]) {
         }
 
         if is_key_pressed(KeyCode::Space) {
-            origin = Vec2::new(PADDING, PADDING);
+            origin = Vec2::new(0f32, 0f32);
             scale = 16f32;
         }
 
