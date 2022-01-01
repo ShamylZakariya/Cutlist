@@ -1,4 +1,4 @@
-use rand::{prelude::*};
+use rand::prelude::*;
 use rand_pcg::Pcg64;
 
 use super::model;
@@ -56,10 +56,6 @@ pub struct CutStack {
 impl CutStack {
     fn new() -> Self {
         Self { cuts: Vec::new() }
-    }
-
-    fn add(&mut self, cut: Cut) {
-        self.cuts.push(cut);
     }
 
     pub fn length(&self) -> f32 {
@@ -120,8 +116,7 @@ impl From<&model::Board> for Board {
 
 impl Board {
     fn can_accept(&self, cut: &Cut) -> bool {
-        self.length >= cut.length
-            && self.width >= cut.width
+        self.width >= cut.width
             && self.best_stack_for_cut(cut).is_some()
             && self.unallocated_length() >= cut.length
     }
@@ -130,15 +125,24 @@ impl Board {
     fn accept(&mut self, cut: &Cut) -> bool {
         if cut.length > self.length || cut.width > self.width {
             // cut simply will not fit this board
-            false
+            return false;
         } else if let Some(best_stack_index) = self.best_stack_for_cut(cut) {
             // if we found a viable stack for this cut att it
-            self.stacks[best_stack_index].add(cut.clone());
-            true
-        } else if self.unallocated_length() >= cut.length {
+
+            // Checking if adding to this stack would overflow the board
+            self.stacks[best_stack_index].cuts.push(cut.clone());
+            if self.allocated_length() > self.length {
+                self.stacks[best_stack_index].cuts.pop();
+                return false;
+            }
+
+            return true;
+        }
+
+        if self.unallocated_length() >= cut.length {
             // Create a new stack for this cut
             let mut new_stack = CutStack::new();
-            new_stack.add(cut.clone());
+            new_stack.cuts.push(cut.clone());
             self.stacks.push(new_stack);
             true
         } else {
@@ -146,13 +150,16 @@ impl Board {
         }
     }
 
+    // total length used by stacks
+    fn allocated_length(&self) -> f32 {
+        self.stacks
+            .iter()
+            .fold(0f32, |acc, stack| acc + stack.length())
+    }
+
     // returns the total length unused by stacks
     fn unallocated_length(&self) -> f32 {
-        self.length
-            - self
-                .stacks
-                .iter()
-                .fold(0f32, |acc, stack| acc + stack.length())
+        self.length - self.allocated_length()
     }
 
     fn best_stack_for_cut(&self, cut: &Cut) -> Option<usize> {

@@ -103,6 +103,11 @@ fn render_board(board: &solver::Board, top_left: Vec2, scale: f32) -> Vec<Label>
     labels
 }
 
+fn draw_axis(at: Vec2, size: f32, color: Color) {
+    draw_line(at.x, at.y - size, at.x, at.y + size, 1f32, color);
+    draw_line(at.x - size, at.y, at.x + size, at.y, 1f32, color);
+}
+
 pub async fn show(cutlist: &[solver::Board]) {
     let mut scale = 16f32;
     let mut origin = Vec2::new(PADDING, PADDING);
@@ -112,6 +117,9 @@ pub async fn show(cutlist: &[solver::Board]) {
         clear_background(WHITE);
 
         draw_text("Cutlist", 20.0, screen_height() - 20., 16.0, DARKGRAY);
+
+        draw_axis(origin, 10f32, GREEN);
+        draw_axis(origin * scale, 10f32, DARKGREEN);
 
         push_camera_state();
         set_camera(&Camera2D::from_display_rect(Rect::new(
@@ -162,17 +170,31 @@ pub async fn show(cutlist: &[solver::Board]) {
         let (_, mouse_wheel_y) = mouse_wheel();
         let (mouse_x, mouse_y) = mouse_position();
         let left_mouse_down = is_mouse_button_down(MouseButton::Left);
-        scale = (scale + (mouse_wheel_y * 1f32)).clamp(1f32, 64f32);
+
+        if mouse_wheel_y.abs() > 0f32 {
+            let new_scale = (scale + (mouse_wheel_y * 1f32)).clamp(1f32, 64f32);
+            let origin_offset = (origin * new_scale) - Vec2::new(mouse_x, mouse_y);
+            let origin_offset = origin_offset * new_scale / scale;
+
+            scale = new_scale;
+            // origin += origin_offset / new_scale;
+
+            println!("new_scale: {} origin_offset: {}", new_scale, origin_offset);
+        }
 
         if left_mouse_down {
             if let Some(mouse_down_position) = mouse_down_position {
                 let mouse_movement = Vec2::new(mouse_x, mouse_y) - mouse_down_position;
                 origin += mouse_movement / scale;
-                println!("mouse_movement: {:?} scale: {}", mouse_movement, scale);
             }
             mouse_down_position = Some(Vec2::new(mouse_x, mouse_y));
         } else {
             mouse_down_position = None;
+        }
+
+        if is_key_pressed(KeyCode::Space) {
+            origin = Vec2::new(PADDING, PADDING);
+            scale = 16f32;
         }
 
         next_frame().await

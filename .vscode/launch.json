@@ -21,7 +21,7 @@
             },
             "args": [
                 "--attempts",
-                "4096"
+                "0"
             ],
             "cwd": "${workspaceFolder}"
         },
