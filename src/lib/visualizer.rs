@@ -186,14 +186,14 @@ pub async fn show(cutlist: &[solver::Board]) {
         let left_mouse_down = is_mouse_button_down(MouseButton::Left);
 
         if mouse_wheel_y.abs() > 0f32 {
-            let new_scale = (scale + (mouse_wheel_y * 1f32)).clamp(1f32, 64f32);
-            let origin_offset = (origin * new_scale) - Vec2::new(mouse_x, mouse_y);
-            let origin_offset = origin_offset * new_scale / scale;
+            let new_scale = (scale + (mouse_wheel_y * 2f32)).clamp(1f32, 64f32);
+            let old_origin = origin * scale;
+            let old_offset_to_cursor = old_origin - Vec2::new(mouse_x, mouse_y);
+            let new_offset_to_cursor = old_offset_to_cursor * new_scale / scale;
+            let new_origin = Vec2::new(mouse_x, mouse_y) + new_offset_to_cursor;
 
             scale = new_scale;
-            // origin += origin_offset / new_scale;
-
-            println!("new_scale: {} origin_offset: {}", new_scale, origin_offset);
+            origin = new_origin / scale;
         }
 
         if left_mouse_down {

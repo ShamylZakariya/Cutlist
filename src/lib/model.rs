@@ -108,7 +108,7 @@ pub struct Input {
 }
 
 impl Input {
-    pub fn from(doc:&Yaml) -> Result<Input> {
+    pub fn from(doc: &Yaml) -> Result<Input> {
         Ok(Self {
             spacing: Self::spacing(doc)?,
             boards: Self::boards(doc)?,

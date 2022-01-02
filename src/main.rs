@@ -89,10 +89,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
         let doc = model::Input::from(doc)?;
         if let Some(cutlist) = solver::compute(&doc, opt.attempts, opt.count) {
             //if opt.visualize {
-                if let Some(cutlist) = cutlist.first() {
-                    // TODO: We need to pass all results to visualizer and provide a UX for paging through them
-                    visualizer::show(cutlist).await;
-                }
+            if let Some(cutlist) = cutlist.first() {
+                // TODO: We need to pass all results to visualizer and provide a UX for paging through them
+                visualizer::show(cutlist).await;
+            }
             //}
         }
     }
