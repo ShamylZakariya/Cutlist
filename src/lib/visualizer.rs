@@ -131,17 +131,19 @@ fn draw_axis(at: Vec2, size: f32, color: Color) {
     draw_line(at.x - size, at.y, at.x + size, at.y, 1f32, color);
 }
 
-pub async fn show(cutlist: &[solver::Board]) {
+pub async fn show(solutions: &[Vec<solver::Board>]) {
     let mut scale = 16f32;
     let mut origin = Vec2::new(0f32, 0f32);
     let mut mouse_down_position: Option<Vec2> = None;
+    let mut current_solution_index: usize = 0;
 
     loop {
         clear_background(WHITE);
 
-        draw_text("Cutlist", 20.0, screen_height() - 20., 16.0, DARKGRAY);
+        draw_text(&format!("Solution {} of {}", current_solution_index + 1, solutions.len()), 20.0, screen_height() - 20., 16.0, DARKGRAY);
         draw_axis(origin * scale, 10f32, GREEN);
 
+        let cutlist = &solutions[current_solution_index];
         let mut all_labels = Vec::new();
         let mut board_y_offset = 0f32;
         for board in cutlist {
@@ -212,6 +214,14 @@ pub async fn show(cutlist: &[solver::Board]) {
         if is_key_pressed(KeyCode::Space) {
             origin = Vec2::new(0f32, 0f32);
             scale = 16f32;
+        }
+
+        if is_key_pressed(KeyCode::J) {
+            current_solution_index = (current_solution_index + 1).min(solutions.len() - 1);
+        }
+
+        if is_key_pressed(KeyCode::K) && current_solution_index > 0 {
+            current_solution_index -= 1;
         }
 
         next_frame().await
