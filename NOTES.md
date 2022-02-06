@@ -1,13 +1,15 @@
-Next Steps:
+# Notes:
 
-## Rendering:
+- Easy optimization
+    - sort once by number of boards needed and pick N with the lowest board count
+    - sort that subset by score.
+    This *should* resolve or reduce the issue where we have some N+1 board answers mixed in with N board answers
 
-## Mouse Controls:
-- scroll wheel zoom needs to center about mouse cursor
-    - drop the use of two separate coordinate systems. Just use pixel coordinate system, and scale/offset my rects accordingly when drawing them
+- Stack Generalization
+    - Rename CutStack to RipStack
+    - Rename Board to CrosscutStack
+    - Create a Stack trait that embodies commonalities (dimensions, scoring, adding cuts?)
+    - Make them implement stack trait
 
-## Future:
-- Shuffle algorithm is fine. Need to do a "smart" packing algorithm which is similar to the sorted approach, but "groups" cuts by their type and attempts to pack them better.
 - We can do a secondary pass after we pick a layout which "cleans it up"
     - if we have small pieces like the apron mount, we can pack them in a secondary stack??
-    - this can be generalized by making `CrosscutStack` and `RipStack` where `Board` becomes `CrosscutStack` and `CutStack` becomes `RipStack`

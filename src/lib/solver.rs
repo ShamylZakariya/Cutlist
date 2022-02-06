@@ -47,65 +47,85 @@ impl Cut {
     }
 }
 
-/// Represents a stack of cuts which can be easily crosscut from a board, and then ripped and crosscut to dimension.
-#[derive(Clone)]
-pub struct CutStack {
-    pub cuts: Vec<Cut>,
-}
+pub trait Stack {
+    fn length(&self) -> f32;
 
-impl CutStack {
-    fn new() -> Self {
-        Self { cuts: Vec::new() }
-    }
+    fn width(&self) -> f32;
 
-    pub fn length(&self) -> f32 {
-        let mut max_length = 0f32;
-        for s in &self.cuts {
-            max_length = max_length.max(s.length)
-        }
-        max_length
-    }
-
-    pub fn width(&self) -> f32 {
-        self.cuts.iter().map(|s| s.width).sum()
-    }
-
-    // returns area required to represent the cuts in this stack
-    fn required_area(&self) -> f32 {
+    fn area(&self) -> f32 {
         self.length() * self.width()
     }
 
-    // returns actual area used by the cuts in this stack
-    fn used_area(&self) -> f32 {
-        let mut area = 0f32;
-        for c in &self.cuts {
-            area += c.width * c.length
-        }
-        area
-    }
+    fn used_area(&self) -> f32;
 
-    // returns a score representing how well used the stack is,
-    // where 1 means perfect allocaiton without any waste.
+    fn is_empty(&self) -> bool;
+
     fn score(&self) -> f32 {
-        if !self.cuts.is_empty() {
-            self.used_area() / self.required_area()
+        if !self.is_empty() {
+            self.used_area() / self.area()
         } else {
             0f32
         }
     }
 }
 
+/// Represents a stack of cuts which can be easily crosscut from a board, and then ripped and crosscut to dimension.
 #[derive(Clone)]
-pub struct Board {
+pub struct RipStack {
+    pub stack: Vec<Cut>,
+}
+
+impl RipStack {
+    fn new() -> Self {
+        Self { stack: Vec::new() }
+    }
+
+    fn score(&self) -> f32 {
+        if !self.stack.is_empty() {
+            self.used_area() / self.area()
+        } else {
+            0f32
+        }
+    }
+}
+
+impl Stack for RipStack {
+    fn length(&self) -> f32 {
+        let mut max_length = 0f32;
+        for s in &self.stack {
+            max_length = max_length.max(s.length)
+        }
+        max_length
+    }
+
+    fn width(&self) -> f32 {
+        self.stack.iter().map(|s| s.width).sum()
+    }
+
+    fn is_empty(&self) -> bool {
+        self.stack.is_empty()
+    }
+
+    fn used_area(&self) -> f32 {
+        let mut area = 0f32;
+        for c in &self.stack {
+            area += c.width * c.length
+        }
+        area
+    }
+}
+
+#[derive(Clone)]
+pub struct CrosscutStack {
     pub length: f32,
     pub width: f32,
     pub id: String,
-    pub stacks: Vec<CutStack>,
+    pub stacks: Vec<RipStack>,
 }
 
-impl From<&model::Board> for Board {
+impl From<&model::Board> for CrosscutStack {
     fn from(board: &model::Board) -> Self {
-        Board {
+        CrosscutStack {
             length: board.length,
             width: board.width,
             id: board.id.clone(),
@@ -114,7 +134,7 @@ impl From<&model::Board> for Board {
     }
 }
 
-impl Board {
+impl CrosscutStack {
     fn can_accept(&self, cut: &Cut) -> bool {
         self.width >= cut.width
             && self.best_stack_for_cut(cut).is_some()
@@ -130,9 +150,9 @@ impl Board {
             // if we found a viable stack for this cut att it
 
             // Checking if adding to this stack would overflow the board
-            self.stacks[best_stack_index].cuts.push(cut.clone());
+            self.stacks[best_stack_index].stack.push(cut.clone());
             if self.allocated_length() > self.length {
-                self.stacks[best_stack_index].cuts.pop();
+                self.stacks[best_stack_index].stack.pop();
                 return false;
             }
 
@@ -141,8 +161,8 @@ impl Board {
 
         if self.unallocated_length() >= cut.length {
             // Create a new stack for this cut
-            let mut new_stack = CutStack::new();
-            new_stack.cuts.push(cut.clone());
+            let mut new_stack = RipStack::new();
+            new_stack.stack.push(cut.clone());
             self.stacks.push(new_stack);
             true
         } else {
@@ -193,7 +213,7 @@ impl Board {
     }
 }
 
-fn score(boards: &[Board]) -> f32 {
+pub fn score(boards: &[CrosscutStack]) -> f32 {
     boards
         .iter()
         .map(|board| board.score())
@@ -224,7 +244,11 @@ struct CutRanges {
 }
 
 /// Returns the index of the best board in `boards` to attempt to insert the cut, or None
-fn best_board_for_cut(boards: &[Board], cut: &Cut, cut_ranges: &CutRanges) -> Option<usize> {
+fn best_board_for_cut(
+    boards: &[CrosscutStack],
+    cut: &Cut,
+    cut_ranges: &CutRanges,
+) -> Option<usize> {
     // naive approach - find first board that could accept this cut
     // TODO: Maybe try to put narrow cuts in narrow boards...
     for (i, board) in boards.iter().enumerate() {
@@ -241,7 +265,7 @@ fn vend_new_board_for_cut(
     model: &model::Input,
     cut: &Cut,
     cut_ranges: &CutRanges,
-) -> Option<Board> {
+) -> Option<CrosscutStack> {
     // find first board wide enough for this cut
     let mut board_models = model.boards.to_vec();
     board_models.sort_by(|a, b| a.width.partial_cmp(&b.width).unwrap());
@@ -255,10 +279,14 @@ fn vend_new_board_for_cut(
     None
 }
 
-fn generate(model: &model::Input, cutlist: &[Cut], cut_ranges: &CutRanges) -> Option<Vec<Board>> {
+fn generate(
+    model: &model::Input,
+    cutlist: &[Cut],
+    cut_ranges: &CutRanges,
+) -> Option<Vec<CrosscutStack>> {
     let mut cutlist = cutlist.to_vec();
 
-    let mut boards: Vec<Board> = Vec::new();
+    let mut boards: Vec<CrosscutStack> = Vec::new();
 
     'cutlist: while let Some(cut) = cutlist.pop() {
         // Check if there's a decent candidate board
@@ -300,7 +328,7 @@ pub fn compute(
     model: &model::Input,
     attempts: usize,
     result_count: usize,
-) -> Option<Vec<Vec<Board>>> {
+) -> Option<Vec<Vec<CrosscutStack>>> {
     if !is_a_solution_possible(model) {
         return None;
     }
@@ -353,11 +381,16 @@ pub fn compute(
     }
 
     if !results.is_empty() {
-        // sort results by score with best at front, and then return the desired count
-        results.sort_by(|a, b| score(b).partial_cmp(&score(a)).unwrap());
         let result_count = result_count.min(results.len());
+
+        // sort results by number of boards, increasing, and take the first result_count
+        results.sort_by(|a, b| a.len().cmp(&b.len()));
+        results.truncate(result_count);
+
+        // sort those results by score, decreasing
+        results.sort_by(|a, b| score(b).partial_cmp(&score(a)).unwrap());
         println!("Found {} viable solutions", result_count);
-        Some(results[0..result_count].to_vec())
+        Some(results)
     } else {
         None
     }

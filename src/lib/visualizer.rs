@@ -1,6 +1,6 @@
 use macroquad::prelude::*;
 
-use super::solver;
+use super::solver::{self, Stack};
 
 const PADDING: f32 = 10f32;
 const FONT_SIZE: f32 = 16f32;
@@ -62,7 +62,7 @@ fn draw_line_scaled(start: Vec2, end: Vec2, scale: f32, color: Color) {
     );
 }
 
-fn render_board(board: &solver::Board, top_left: Vec2, scale: f32) -> Vec<Label> {
+fn render_board(board: &solver::CrosscutStack, top_left: Vec2, scale: f32) -> Vec<Label> {
     let mut labels = Vec::new();
 
     // Draw the board
@@ -84,7 +84,7 @@ fn render_board(board: &solver::Board, top_left: Vec2, scale: f32) -> Vec<Label>
     let mut stack_origin = top_left;
     for stack in &board.stacks {
         let mut cut_y = 0f32;
-        for cut in &stack.cuts {
+        for cut in &stack.stack {
             draw_rectangle_scaled(
                 Vec2::new(stack_origin.x, stack_origin.y + cut_y),
                 Vec2::new(cut.length, cut.width),
@@ -131,19 +131,32 @@ fn draw_axis(at: Vec2, size: f32, color: Color) {
     draw_line(at.x - size, at.y, at.x + size, at.y, 1f32, color);
 }
 
-pub async fn show(solutions: &[Vec<solver::Board>]) {
+pub async fn show(solutions: &[Vec<solver::CrosscutStack>]) {
     let mut scale = 16f32;
     let mut origin = Vec2::new(0f32, 0f32);
     let mut mouse_down_position: Option<Vec2> = None;
     let mut current_solution_index: usize = 0;
 
     loop {
+        let cutlist = &solutions[current_solution_index];
+
         clear_background(WHITE);
 
-        draw_text(&format!("Solution {} of {}", current_solution_index + 1, solutions.len()), 20.0, screen_height() - 20., 16.0, DARKGRAY);
+        draw_text(
+            &format!(
+                "Solution {} of {} (score: {})",
+                current_solution_index + 1,
+                solutions.len(),
+                solver::score(cutlist)
+            ),
+            20.0,
+            screen_height() - 20.,
+            16.0,
+            DARKGRAY,
+        );
+
         draw_axis(origin * scale, 10f32, GREEN);
 
-        let cutlist = &solutions[current_solution_index];
         let mut all_labels = Vec::new();
         let mut board_y_offset = 0f32;
         for board in cutlist {

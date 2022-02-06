@@ -14,13 +14,10 @@ pub struct Options {
     #[structopt(short, long, default_value = "input.yaml")]
     pub input: String,
 
-    #[structopt(short, long)]
-    pub visualize: bool,
-
-    #[structopt(short, long, default_value = "1024")]
+    #[structopt(short, long, default_value = "4096")]
     pub attempts: usize,
 
-    #[structopt(short, long, default_value = "1")]
+    #[structopt(short, long, default_value = "16")]
     pub count: usize,
 }
 
