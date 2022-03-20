@@ -22,9 +22,9 @@ impl Board {
     /// Parses a Board specification format string in form of: 96x6.5, which yields
     /// Board { length: 96, width: 6.5 }
     pub fn parse(spec: &str) -> Result<Board> {
-        if let Some((length, remainder)) = spec.split_once("x") {
+        if let Some((length, remainder)) = spec.split_once('x') {
             let length = length.parse::<f32>()?;
-            if let Some((width, id)) = remainder.split_once(":") {
+            if let Some((width, id)) = remainder.split_once(':') {
                 let width = width.parse::<f32>()?;
                 let id = String::from(id);
                 if length <= 0f32 {
@@ -68,19 +68,19 @@ impl Cut {
     /// Parses a cut specification format string in form of: 2@12x4:Apron, which yields
     /// Cut { length: 12, width: 4, count: 2, name: "Apron" }
     pub fn parse(spec: &str) -> Result<Cut> {
-        if let Some((count, remainder)) = spec.split_once("@") {
+        if let Some((count, remainder)) = spec.split_once('@') {
             let count = count.parse::<i32>()?;
             if count < 1 {
                 bail!("Count must be at least 1");
             }
 
-            if let Some((length, remainder)) = remainder.split_once("x") {
+            if let Some((length, remainder)) = remainder.split_once('x') {
                 let length = length.parse::<f32>()?;
                 if length <= 0f32 {
                     bail!("Length must be greater than 0");
                 }
 
-                if let Some((width, remainder)) = remainder.split_once(":") {
+                if let Some((width, remainder)) = remainder.split_once(':') {
                     let width = width.parse::<f32>()?;
                     if width <= 0f32 {
                         bail!("Width must be greater than 0");

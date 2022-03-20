@@ -216,8 +216,7 @@ impl CrosscutStack {
 pub fn score(boards: &[CrosscutStack]) -> f32 {
     boards
         .iter()
-        .map(|board| board.score())
-        .flatten()
+        .filter_map(|board| board.score())
         .fold(1f32, |acc, score| acc * score)
 }
 
@@ -384,7 +383,7 @@ pub fn compute(
         let result_count = result_count.min(results.len());
 
         // sort results by number of boards, increasing, and take the first result_count
-        results.sort_by(|a, b| a.len().cmp(&b.len()));
+        results.sort_by_key(|a| a.len());
         results.truncate(result_count);
 
         // sort those results by score, decreasing
