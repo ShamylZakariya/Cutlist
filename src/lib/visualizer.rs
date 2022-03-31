@@ -62,7 +62,7 @@ fn draw_line_scaled(start: Vec2, end: Vec2, scale: f32, color: Color) {
     );
 }
 
-fn render_board(board: &solver::CrosscutStack, top_left: Vec2, scale: f32) -> Vec<Label> {
+fn render_board(board: &solver::Board, top_left: Vec2, scale: f32) -> Vec<Label> {
     let mut labels = Vec::new();
 
     // Draw the board
@@ -131,7 +131,7 @@ fn draw_axis(at: Vec2, size: f32, color: Color) {
     draw_line(at.x - size, at.y, at.x + size, at.y, 1f32, color);
 }
 
-pub async fn show(solutions: &[Vec<solver::CrosscutStack>]) {
+pub async fn show(solutions: &[Vec<solver::Board>]) {
     let mut scale = 16f32;
     let mut origin = Vec2::new(0f32, 0f32);
     let mut mouse_down_position: Option<Vec2> = None;
@@ -235,6 +235,10 @@ pub async fn show(solutions: &[Vec<solver::CrosscutStack>]) {
 
         if is_key_pressed(KeyCode::K) && current_solution_index > 0 {
             current_solution_index -= 1;
+        }
+
+        if is_key_pressed(KeyCode::Escape) {
+            break;
         }
 
         next_frame().await

@@ -19,8 +19,8 @@ impl PartialEq for Board {
 }
 
 impl Board {
-    /// Parses a Board specification format string in form of: 96x6.5, which yields
-    /// Board { length: 96, width: 6.5 }
+    /// Parses a Board specification format string in form of: "96x6.5:Name", which yields:
+    /// `Board { length: 96, width: 6.5, id: "Name" }`
     pub fn parse(spec: &str) -> Result<Board> {
         if let Some((length, remainder)) = spec.split_once('x') {
             let length = length.parse::<f32>()?;
@@ -65,7 +65,7 @@ impl PartialEq for Cut {
 impl Eq for Cut {}
 
 impl Cut {
-    /// Parses a cut specification format string in form of: 2@12x4:Apron, which yields
+    /// Parses a cut specification format string in form of: "2@12x4:Apron", which yields
     /// Cut { length: 12, width: 4, count: 2, name: "Apron" }
     pub fn parse(spec: &str) -> Result<Cut> {
         if let Some((count, remainder)) = spec.split_once('@') {

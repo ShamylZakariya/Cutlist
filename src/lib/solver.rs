@@ -69,63 +69,29 @@ pub trait Stack {
     }
 }
 
-/// Represents a stack of cuts which can be easily crosscut from a board, and then ripped and crosscut to dimension.
+/// Board is the primary set of crosscuts a board will undergo.
+/// Board doesn't contain any Cut instances, rather, each Cut is stored in
+/// a RipStack.
+
+/// Board arranges RipStacks from left-to-right. The
+/// RipStacks, in turn, stack Cuts from top to bottom
+/// -----------------------------------------------------------------------------------------
+/// | Board
+/// | |Rip Stack | |RipStack |
+/// | |  Cut     | | Cut     |
+/// | |  Cut     | | CUt     |
+/// -----------------------------------------------------------------------------------------
 #[derive(Clone)]
-pub struct RipStack {
-    pub stack: Vec<Cut>,
-}
-
-impl RipStack {
-    fn new() -> Self {
-        Self { stack: Vec::new() }
-    }
-
-    fn score(&self) -> f32 {
-        if !self.stack.is_empty() {
-            self.used_area() / self.area()
-        } else {
-            0f32
-        }
-    }
-}
-
-impl Stack for RipStack {
-    fn length(&self) -> f32 {
-        let mut max_length = 0f32;
-        for s in &self.stack {
-            max_length = max_length.max(s.length)
-        }
-        max_length
-    }
-
-    fn width(&self) -> f32 {
-        self.stack.iter().map(|s| s.width).sum()
-    }
-
-    fn is_empty(&self) -> bool {
-        self.stack.is_empty()
-    }
-
-    fn used_area(&self) -> f32 {
-        let mut area = 0f32;
-        for c in &self.stack {
-            area += c.width * c.length
-        }
-        area
-    }
-}
-
-#[derive(Clone)]
-pub struct CrosscutStack {
+pub struct Board {
     pub length: f32,
     pub width: f32,
     pub id: String,
     pub stacks: Vec<RipStack>,
 }
 
-impl From<&model::Board> for CrosscutStack {
+impl From<&model::Board> for Board {
     fn from(board: &model::Board) -> Self {
-        CrosscutStack {
+        Board {
             length: board.length,
             width: board.width,
             id: board.id.clone(),
@@ -134,11 +100,11 @@ impl From<&model::Board> for CrosscutStack {
     }
 }
 
-impl CrosscutStack {
+impl Board {
     fn can_accept(&self, cut: &Cut) -> bool {
         self.width >= cut.width
-            && self.best_stack_for_cut(cut).is_some()
-            && self.unallocated_length() >= cut.length
+            && self.length >= cut.length
+            && (self.best_stack_for_cut(cut).is_some() || self.unallocated_length() >= cut.length)
     }
 
     // if the board can take this cut into its allocation, take it in, returning true, otherwise return false
@@ -147,10 +113,9 @@ impl CrosscutStack {
             // cut simply will not fit this board
             return false;
         } else if let Some(best_stack_index) = self.best_stack_for_cut(cut) {
-            // if we found a viable stack for this cut att it
-
-            // Checking if adding to this stack would overflow the board
-            self.stacks[best_stack_index].stack.push(cut.clone());
+            // if we found a viable stack for this cut add it
+            // (provided the addition would not overflow board length)
+            self.stacks[best_stack_index].accept(cut.clone());
             if self.allocated_length() > self.length {
                 self.stacks[best_stack_index].stack.pop();
                 return false;
@@ -160,9 +125,9 @@ impl CrosscutStack {
         }
 
         if self.unallocated_length() >= cut.length {
-            // Create a new stack for this cut
+            // No stack can accept the cut; create a new stack
             let mut new_stack = RipStack::new();
-            new_stack.stack.push(cut.clone());
+            new_stack.accept(cut.clone());
             self.stacks.push(new_stack);
             true
         } else {
@@ -213,7 +178,115 @@ impl CrosscutStack {
     }
 }
 
-pub fn score(boards: &[CrosscutStack]) -> f32 {
+/// RipStack represents a crosscut section from a board which can then be ripped to width.
+/// RipStacks are owned by a Board
+#[derive(Clone)]
+pub struct RipStack {
+    pub stack: Vec<Cut>,
+}
+
+impl RipStack {
+    fn new() -> Self {
+        Self { stack: Vec::new() }
+    }
+
+    fn accept(&mut self, cut: Cut) {
+        self.stack.push(cut);
+    }
+
+    fn score(&self) -> f32 {
+        if !self.stack.is_empty() {
+            self.used_area() / self.area()
+        } else {
+            0f32
+        }
+    }
+}
+
+impl Stack for RipStack {
+    // A RipStack is a stack of cuts (top to bottom) which can be ripped from a crosscut section of board.
+    // The length of a RipStack is the max length of the contained cuts
+    fn length(&self) -> f32 {
+        let mut max_length = 0f32;
+        for s in &self.stack {
+            max_length = max_length.max(s.length)
+        }
+        max_length
+    }
+
+    // Given that the RipStack is a stack of cuts, the width is the sum of the cut widths
+    fn width(&self) -> f32 {
+        self.stack.iter().map(|s| s.width).sum()
+    }
+
+    fn is_empty(&self) -> bool {
+        self.stack.is_empty()
+    }
+
+    fn used_area(&self) -> f32 {
+        let mut area = 0f32;
+        for c in &self.stack {
+            area += c.width * c.length
+        }
+        area
+    }
+}
+
+#[derive(Clone)]
+pub struct CrosscutStack {
+    pub stack: Vec<Cut>,
+}
+
+impl CrosscutStack {
+    fn new() -> Self {
+        Self { stack: Vec::new() }
+    }
+
+    fn accept(&mut self, cut: Cut) {
+        self.stack.push(cut);
+    }
+
+    fn score(&self) -> f32 {
+        if !self.stack.is_empty() {
+            self.used_area() / self.area()
+        } else {
+            0f32
+        }
+    }
+}
+
+impl Stack for CrosscutStack {
+    // A CrosscutStack a stack of cuts arranged from left to right, which will be crosscut from a rip
+    // The length of a RipStack is the sum of cut lengths
+    fn length(&self) -> f32 {
+        self.stack.iter().map(|s| s.length).sum()
+    }
+
+    // The width of CrosscutStack is the max of the widths of cuts
+    fn width(&self) -> f32 {
+        let mut max_width = 0f32;
+        for s in &self.stack {
+            max_width = max_width.max(s.width)
+        }
+        max_width
+    }
+
+    fn is_empty(&self) -> bool {
+        self.stack.is_empty()
+    }
+
+    fn used_area(&self) -> f32 {
+        let mut area = 0f32;
+        for c in &self.stack {
+            area += c.width * c.length
+        }
+        area
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+pub fn score(boards: &[Board]) -> f32 {
     boards
         .iter()
         .filter_map(|board| board.score())
@@ -244,7 +317,7 @@ struct CutRanges {
 
 /// Returns the index of the best board in `boards` to attempt to insert the cut, or None
 fn best_board_for_cut(
-    boards: &[CrosscutStack],
+    boards: &[Board],
     cut: &Cut,
     cut_ranges: &CutRanges,
 ) -> Option<usize> {
@@ -264,7 +337,7 @@ fn vend_new_board_for_cut(
     model: &model::Input,
     cut: &Cut,
     cut_ranges: &CutRanges,
-) -> Option<CrosscutStack> {
+) -> Option<Board> {
     // find first board wide enough for this cut
     let mut board_models = model.boards.to_vec();
     board_models.sort_by(|a, b| a.width.partial_cmp(&b.width).unwrap());
@@ -282,10 +355,10 @@ fn generate(
     model: &model::Input,
     cutlist: &[Cut],
     cut_ranges: &CutRanges,
-) -> Option<Vec<CrosscutStack>> {
+) -> Option<Vec<Board>> {
     let mut cutlist = cutlist.to_vec();
 
-    let mut boards: Vec<CrosscutStack> = Vec::new();
+    let mut boards: Vec<Board> = Vec::new();
 
     'cutlist: while let Some(cut) = cutlist.pop() {
         // Check if there's a decent candidate board
@@ -327,7 +400,7 @@ pub fn compute(
     model: &model::Input,
     attempts: usize,
     result_count: usize,
-) -> Option<Vec<Vec<CrosscutStack>>> {
+) -> Option<Vec<Vec<Board>>> {
     if !is_a_solution_possible(model) {
         return None;
     }
