@@ -7,10 +7,11 @@ const FONT_SIZE: f32 = 16f32;
 const BOARD_COLOR: Color = Color::new(0f32, 0f32, 0f32, 0.1);
 const BOARD_STROKE_COLOR: Color = Color::new(0f32, 0f32, 0f32, 0.2);
 
-const CUT_COLOR: Color = Color::new(0.5f32, 0.5f32, 0.5f32, 1f32);
+const CUT_COLOR: Color = Color::new(0.5f32, 0.5f32, 0.5f32, 0.5f32);
 const CUT_STROKE_COLOR: Color = Color::new(0.25f32, 0.25f32, 0.25f32, 1f32);
 
-const CROSSCUT_LINE_COLOR: Color = Color::new(1f32, 0f32, 0f32, 0.5);
+const PRIMARY_CROSSCUT_LINE_COLOR: Color = Color::new(1f32, 0f32, 0f32, 0.5);
+const SECONDARY_CROSSCUT_LINE_COLOR: Color = Color::new(0f32, 1f32, 0f32, 0.5);
 
 #[derive(Clone, Copy)]
 enum LabelAnchor {
@@ -84,26 +85,46 @@ fn render_board(board: &solver::Board, top_left: Vec2, scale: f32) -> Vec<Label>
     let mut stack_origin = top_left;
     for stack in &board.stacks {
         let mut cut_y = 0f32;
-        for cut in &stack.stack {
-            draw_rectangle_scaled(
-                Vec2::new(stack_origin.x, stack_origin.y + cut_y),
-                Vec2::new(cut.length, cut.width),
-                scale,
-                CUT_COLOR,
-                CUT_STROKE_COLOR,
-            );
+        for crosscut_stack in &stack.stacks {
+            let mut cut_x = 0f32;
 
-            labels.push(Label {
-                text: cut.id.clone(),
-                position: Vec2::new(
-                    stack_origin.x + cut.length / 2f32,
-                    stack_origin.y + cut_y + cut.width / 2f32,
-                ),
-                color: WHITE,
-                anchor: LabelAnchor::Center,
-            });
+            for cut in &crosscut_stack.stack {
+                draw_rectangle_scaled(
+                    Vec2::new(stack_origin.x + cut_x, stack_origin.y + cut_y),
+                    Vec2::new(cut.length, cut.width),
+                    scale,
+                    CUT_COLOR,
+                    CUT_STROKE_COLOR,
+                );
 
-            cut_y += cut.width;
+                // draw the crosscut
+                draw_line_scaled(
+                    Vec2::new(
+                        stack_origin.x + cut_x,
+                        stack_origin.y + cut_y - (PADDING / 16f32),
+                    ),
+                    Vec2::new(
+                        stack_origin.x + cut_x,
+                        stack_origin.y + cut_y + crosscut_stack.width() + (PADDING / 16f32),
+                    ),
+                    scale,
+                    SECONDARY_CROSSCUT_LINE_COLOR,
+                );
+
+                labels.push(Label {
+                    text: cut.id.clone(),
+                    position: Vec2::new(
+                        stack_origin.x + cut_x + cut.length / 2f32,
+                        stack_origin.y + cut_y + cut.width / 2f32,
+                    ),
+                    color: WHITE,
+                    anchor: LabelAnchor::Center,
+                });
+
+                cut_x += cut.length
+            }
+
+            cut_y += crosscut_stack.width()
         }
 
         // draw the crosscut
@@ -117,7 +138,7 @@ fn render_board(board: &solver::Board, top_left: Vec2, scale: f32) -> Vec<Label>
                 top_left.y + board.width + (PADDING / 8f32),
             ),
             scale,
-            CROSSCUT_LINE_COLOR,
+            PRIMARY_CROSSCUT_LINE_COLOR,
         );
 
         stack_origin.x += stack.length();
@@ -136,6 +157,11 @@ pub async fn show(solutions: &[Vec<solver::Board>]) {
     let mut origin = Vec2::new(0f32, 0f32);
     let mut mouse_down_position: Option<Vec2> = None;
     let mut current_solution_index: usize = 0;
+
+    println!(
+        "solution[{}]:\n{:#?}\n\n",
+        current_solution_index, &solutions[current_solution_index]
+    );
 
     loop {
         let cutlist = &solutions[current_solution_index];
@@ -229,12 +255,21 @@ pub async fn show(solutions: &[Vec<solver::Board>]) {
             scale = 16f32;
         }
 
-        if is_key_pressed(KeyCode::J) {
+        let debug_print_solution: bool = if is_key_pressed(KeyCode::J) {
             current_solution_index = (current_solution_index + 1).min(solutions.len() - 1);
-        }
-
-        if is_key_pressed(KeyCode::K) && current_solution_index > 0 {
+            true
+        } else if is_key_pressed(KeyCode::K) && current_solution_index > 0 {
             current_solution_index -= 1;
+            true
+        } else {
+            false
+        };
+
+        if debug_print_solution {
+            println!(
+                "solution[{}]:\n{:#?}\n\n",
+                current_solution_index, &solutions[current_solution_index]
+            );
         }
 
         if is_key_pressed(KeyCode::Escape) {
