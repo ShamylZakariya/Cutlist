@@ -45,6 +45,10 @@ impl Cut {
             id: self.id,
         }
     }
+
+    fn area(&self) -> f32 {
+        self.width * self.length
+    }
 }
 
 pub trait Stack {
@@ -62,11 +66,20 @@ pub trait Stack {
 
     fn score(&self) -> f32 {
         if !self.is_empty() {
-            self.used_area() / self.area()
+            let area = self.area();
+            if area > 0f32 {
+                self.used_area() / area
+            } else {
+                0f32
+            }
         } else {
             0f32
         }
     }
+
+    fn accept(&mut self, cut: Cut);
+
+    fn remove(&mut self, cut: &Cut) -> bool;
 }
 
 /// Board is the primary set of crosscuts a board will undergo.
@@ -190,6 +203,28 @@ impl RipStack {
         Self { stacks: Vec::new() }
     }
 
+    fn best_stack_for_cut(&self, cut: &Cut) -> Option<usize> {
+        return None;
+
+        // For now, select the shortest stack. TODO: We may want to bias to
+        // stacks of closest width to the cut.
+
+        // let mut best_stack_index: Option<usize> = None;
+        // let mut best_stack_length: f32 = f32::MAX;
+
+        // for (i, stack) in self.stacks.iter().enumerate() {
+        //     let stack_length = stack.length();
+        //     if stack_length < best_stack_length {
+        //         best_stack_index = Some(i);
+        //         best_stack_length = stack_length;
+        //     }
+        // }
+
+        // best_stack_index
+    }
+}
+
+impl Stack for RipStack {
     fn accept(&mut self, cut: Cut) {
         // Find the Crosscut Stack which best accepts this cut
 
@@ -202,26 +237,6 @@ impl RipStack {
         }
     }
 
-    fn best_stack_for_cut(&self, cut: &Cut) -> Option<usize> {
-        // return None;
-
-        // For now, select the shortest stack. TODO: We may want to bias to
-        // stacks of closest width to the cut.
-
-        let mut best_stack_index: Option<usize> = None;
-        let mut best_stack_length: f32 = f32::MAX;
-
-        for (i, stack) in self.stacks.iter().enumerate() {
-            let stack_length = stack.length();
-            if stack_length < best_stack_length {
-                best_stack_index = Some(i);
-                best_stack_length = stack_length;
-            }
-        }
-
-        best_stack_index
-    }
-
     fn remove(&mut self, cut: &Cut) -> bool {
         for stack in &mut self.stacks {
             if stack.remove(cut) {
@@ -231,16 +246,6 @@ impl RipStack {
         false
     }
 
-    fn score(&self) -> f32 {
-        if !self.is_empty() {
-            self.used_area() / self.area()
-        } else {
-            0f32
-        }
-    }
-}
-
-impl Stack for RipStack {
     // A RipStack is a stack of cuts (top to bottom) which can be ripped from a crosscut section of board.
     // The length of a RipStack is the max length of the contained cuts
     fn length(&self) -> f32 {
@@ -261,11 +266,7 @@ impl Stack for RipStack {
     }
 
     fn used_area(&self) -> f32 {
-        let mut area = 0f32;
-        for stack in &self.stacks {
-            area += stack.used_area()
-        }
-        area
+        self.stacks.iter().map(|s| s.used_area()).sum()
     }
 }
 
@@ -278,13 +279,15 @@ impl CrosscutStack {
     fn new() -> Self {
         Self { stack: Vec::new() }
     }
+}
 
+impl Stack for CrosscutStack {
     fn accept(&mut self, cut: Cut) {
         self.stack.push(cut);
     }
 
     fn remove(&mut self, cut: &Cut) -> bool {
-        if self.stack.contains(&cut) {
+        if self.stack.contains(cut) {
             self.stack.retain(|c| c != cut);
             true
         } else {
@@ -292,16 +295,6 @@ impl CrosscutStack {
         }
     }
 
-    fn score(&self) -> f32 {
-        if !self.stack.is_empty() {
-            self.used_area() / self.area()
-        } else {
-            0f32
-        }
-    }
-}
-
-impl Stack for CrosscutStack {
     // A CrosscutStack a stack of cuts arranged from left to right, which will be crosscut from a rip
     // The length of a RipStack is the sum of cut lengths
     fn length(&self) -> f32 {
@@ -380,7 +373,7 @@ fn vend_new_board_for_cut(
     cut: &Cut,
     cut_ranges: &CutRanges,
 ) -> Option<Board> {
-    // find first board wide enough for this cut
+    // sort boards by increasing width, and find first board wide enough for this cut
     let mut board_models = model.boards.to_vec();
     board_models.sort_by(|a, b| a.width.partial_cmp(&b.width).unwrap());
 
@@ -395,7 +388,6 @@ fn vend_new_board_for_cut(
 
 fn generate(model: &model::Input, cutlist: &[Cut], cut_ranges: &CutRanges) -> Option<Vec<Board>> {
     let mut cutlist = cutlist.to_vec();
-
     let mut boards: Vec<Board> = Vec::new();
 
     'cutlist: while let Some(cut) = cutlist.pop() {
@@ -443,7 +435,7 @@ pub fn compute(
         return None;
     }
 
-    // Create a vector of our required Cuts, sorted from longest to shortest
+    // Create a vector of our required Cuts and collect min/maxes for dimensions
     let (mut cutlist, cut_ranges) = {
         let mut cutlist: Vec<Cut> = Vec::new();
         let mut longest: f32 = 0f32;
@@ -474,7 +466,7 @@ pub fn compute(
     let mut results = Vec::new();
 
     if attempts == 0 {
-        cutlist.sort_by(|a, b| b.length.partial_cmp(&a.length).unwrap());
+        cutlist.sort_by(|a, b| a.area().partial_cmp(&b.area()).unwrap());
         if let Some(result) = generate(model, &cutlist, &cut_ranges) {
             results.push(result);
         }
