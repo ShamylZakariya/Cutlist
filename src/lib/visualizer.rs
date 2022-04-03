@@ -2,16 +2,16 @@ use macroquad::prelude::*;
 
 use super::solver::{self, Stack};
 
-const PADDING: f32 = 10f32;
-const FONT_SIZE: f32 = 16f32;
-const BOARD_COLOR: Color = Color::new(0f32, 0f32, 0f32, 0.1);
-const BOARD_STROKE_COLOR: Color = Color::new(0f32, 0f32, 0f32, 0.2);
+const PADDING: f32 = 10_f32;
+const FONT_SIZE: f32 = 16_f32;
+const BOARD_COLOR: Color = Color::new(0_f32, 0_f32, 0_f32, 0.1);
+const BOARD_STROKE_COLOR: Color = Color::new(0_f32, 0_f32, 0_f32, 0.2);
 
-const CUT_COLOR: Color = Color::new(0.5f32, 0.5f32, 0.5f32, 0.5f32);
-const CUT_STROKE_COLOR: Color = Color::new(0.25f32, 0.25f32, 0.25f32, 1f32);
+const CUT_COLOR: Color = Color::new(0.5_f32, 0.5_f32, 0.5_f32, 0.5_f32);
+const CUT_STROKE_COLOR: Color = Color::new(0.25_f32, 0.25_f32, 0.25_f32, 1_f32);
 
-const PRIMARY_CROSSCUT_LINE_COLOR: Color = Color::new(1f32, 0f32, 0f32, 0.5);
-const SECONDARY_CROSSCUT_LINE_COLOR: Color = Color::new(0f32, 1f32, 0f32, 0.5);
+const PRIMARY_CROSSCUT_LINE_COLOR: Color = Color::new(1_f32, 0_f32, 0_f32, 0.5);
+const SECONDARY_CROSSCUT_LINE_COLOR: Color = Color::new(0_f32, 1_f32, 0_f32, 0.5);
 
 #[derive(Clone, Copy)]
 enum LabelAnchor {
@@ -47,7 +47,7 @@ fn draw_rectangle_scaled(
         top_left.y * scale,
         size.x * scale,
         size.y * scale,
-        1f32,
+        1_f32,
         stroke_color,
     );
 }
@@ -58,7 +58,7 @@ fn draw_line_scaled(start: Vec2, end: Vec2, scale: f32, color: Color) {
         start.y * scale,
         end.x * scale,
         end.y * scale,
-        1f32,
+        1_f32,
         color,
     );
 }
@@ -84,9 +84,9 @@ fn render_board(board: &solver::Board, top_left: Vec2, scale: f32) -> Vec<Label>
     // Draw the cut stacks
     let mut stack_origin = top_left;
     for stack in &board.stacks {
-        let mut cut_y = 0f32;
+        let mut cut_y = 0_f32;
         for crosscut_stack in &stack.stacks {
-            let mut cut_x = 0f32;
+            let mut cut_x = 0_f32;
 
             for cut in &crosscut_stack.stack {
                 draw_rectangle_scaled(
@@ -101,11 +101,11 @@ fn render_board(board: &solver::Board, top_left: Vec2, scale: f32) -> Vec<Label>
                 draw_line_scaled(
                     Vec2::new(
                         stack_origin.x + cut_x,
-                        stack_origin.y + cut_y - (PADDING / 16f32),
+                        stack_origin.y + cut_y - (PADDING / 16_f32),
                     ),
                     Vec2::new(
                         stack_origin.x + cut_x,
-                        stack_origin.y + cut_y + crosscut_stack.width() + (PADDING / 16f32),
+                        stack_origin.y + cut_y + crosscut_stack.width() + (PADDING / 16_f32),
                     ),
                     scale,
                     SECONDARY_CROSSCUT_LINE_COLOR,
@@ -114,8 +114,8 @@ fn render_board(board: &solver::Board, top_left: Vec2, scale: f32) -> Vec<Label>
                 labels.push(Label {
                     text: cut.id.clone(),
                     position: Vec2::new(
-                        stack_origin.x + cut_x + cut.length / 2f32,
-                        stack_origin.y + cut_y + cut.width / 2f32,
+                        stack_origin.x + cut_x + cut.length / 2_f32,
+                        stack_origin.y + cut_y + cut.width / 2_f32,
                     ),
                     color: WHITE,
                     anchor: LabelAnchor::Center,
@@ -131,11 +131,11 @@ fn render_board(board: &solver::Board, top_left: Vec2, scale: f32) -> Vec<Label>
         draw_line_scaled(
             Vec2::new(
                 stack_origin.x + stack.length(),
-                top_left.y - (PADDING / 8f32),
+                top_left.y - (PADDING / 8_f32),
             ),
             Vec2::new(
                 stack_origin.x + stack.length(),
-                top_left.y + board.width + (PADDING / 8f32),
+                top_left.y + board.width + (PADDING / 8_f32),
             ),
             scale,
             PRIMARY_CROSSCUT_LINE_COLOR,
@@ -148,13 +148,13 @@ fn render_board(board: &solver::Board, top_left: Vec2, scale: f32) -> Vec<Label>
 }
 
 fn draw_axis(at: Vec2, size: f32, color: Color) {
-    draw_line(at.x, at.y - size, at.x, at.y + size, 1f32, color);
-    draw_line(at.x - size, at.y, at.x + size, at.y, 1f32, color);
+    draw_line(at.x, at.y - size, at.x, at.y + size, 1_f32, color);
+    draw_line(at.x - size, at.y, at.x + size, at.y, 1_f32, color);
 }
 
 pub async fn show(solutions: &[Vec<solver::Board>], print: bool) {
-    let mut scale = 16f32;
-    let mut origin = Vec2::new(0f32, 0f32);
+    let mut scale = 16_f32;
+    let mut origin = Vec2::new(0_f32, 0_f32);
     let mut mouse_down_position: Option<Vec2> = None;
     let mut current_solution_index: usize = 0;
 
@@ -183,19 +183,19 @@ pub async fn show(solutions: &[Vec<solver::Board>], print: bool) {
             DARKGRAY,
         );
 
-        draw_axis(origin * scale, 10f32, GREEN);
+        draw_axis(origin * scale, 10_f32, GREEN);
 
         let mut all_labels = Vec::new();
-        let mut board_y_offset = 0f32;
+        let mut board_y_offset = 0_f32;
         for board in cutlist {
             let mut board_labels =
-                render_board(board, origin + Vec2::new(0f32, board_y_offset), scale);
+                render_board(board, origin + Vec2::new(0_f32, board_y_offset), scale);
             all_labels.append(&mut board_labels);
             board_y_offset += board.width + PADDING;
         }
 
         for label in &all_labels {
-            let measure = measure_text(&label.text, None, FONT_SIZE as u16, 1f32);
+            let measure = measure_text(&label.text, None, FONT_SIZE as u16, 1_f32);
             match label.anchor {
                 LabelAnchor::Left => draw_text(
                     &label.text,
@@ -231,8 +231,8 @@ pub async fn show(solutions: &[Vec<solver::Board>], print: bool) {
         };
         let left_mouse_down = is_mouse_button_down(MouseButton::Left);
 
-        if mouse_wheel_y.abs() > 0f32 {
-            let new_scale = (scale + (mouse_wheel_y * 2f32)).clamp(1f32, 64f32);
+        if mouse_wheel_y.abs() > 0_f32 {
+            let new_scale = (scale + (mouse_wheel_y * 2_f32)).clamp(1_f32, 64_f32);
             let old_origin = origin * scale;
             let old_offset_to_cursor = old_origin - mouse_position;
             let new_offset_to_cursor = old_offset_to_cursor * new_scale / scale;
@@ -253,8 +253,8 @@ pub async fn show(solutions: &[Vec<solver::Board>], print: bool) {
         }
 
         if is_key_pressed(KeyCode::Space) {
-            origin = Vec2::new(0f32, 0f32);
-            scale = 16f32;
+            origin = Vec2::new(0_f32, 0_f32);
+            scale = 16_f32;
         }
 
         let solution_index_changed: bool = if is_key_pressed(KeyCode::J) {

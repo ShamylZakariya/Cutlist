@@ -27,10 +27,10 @@ impl Board {
             if let Some((width, id)) = remainder.split_once(':') {
                 let width = width.parse::<f32>()?;
                 let id = String::from(id);
-                if length <= 0f32 {
+                if length <= 0_f32 {
                     bail!("Length must be greater than 0")
                 }
-                if width <= 0f32 {
+                if width <= 0_f32 {
                     bail!("Width must be greater than 0")
                 }
                 if id.is_empty() {
@@ -76,13 +76,13 @@ impl Cut {
 
             if let Some((length, remainder)) = remainder.split_once('x') {
                 let length = length.parse::<f32>()?;
-                if length <= 0f32 {
+                if length <= 0_f32 {
                     bail!("Length must be greater than 0");
                 }
 
                 if let Some((width, remainder)) = remainder.split_once(':') {
                     let width = width.parse::<f32>()?;
-                    if width <= 0f32 {
+                    if width <= 0_f32 {
                         bail!("Width must be greater than 0");
                     }
 
@@ -120,7 +120,7 @@ impl Input {
         if let Some(spacing) = doc["spacing"].as_f64() {
             Ok(spacing as f32)
         } else {
-            Ok(0f32)
+            Ok(0_f32)
         }
     }
 
@@ -177,8 +177,8 @@ mod spec_tests {
         assert_eq!(
             Board::parse("96x5:Foo").expect("Expected format to parse"),
             Board {
-                length: 96f32,
-                width: 5f32,
+                length: 96_f32,
+                width: 5_f32,
                 id: "Foo".into()
             }
         );
@@ -211,8 +211,8 @@ mod spec_tests {
         assert_eq!(
             Cut::parse("2@12x4:Apron").expect("Expected format to parse"),
             Cut {
-                length: 12f32,
-                width: 4f32,
+                length: 12_f32,
+                width: 4_f32,
                 count: 2,
                 name: "Apron".to_owned()
             }
@@ -221,8 +221,8 @@ mod spec_tests {
         assert_eq!(
             Cut::parse("22@12.5x4.8:This has multiple words").expect("Expected format to parse"),
             Cut {
-                length: 12.5f32,
-                width: 4.8f32,
+                length: 12.5_f32,
+                width: 4.8_f32,
                 count: 22,
                 name: "This has multiple words".to_owned()
             }

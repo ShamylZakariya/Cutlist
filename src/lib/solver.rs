@@ -20,8 +20,8 @@ impl Eq for Cut {}
 
 impl std::hash::Hash for Cut {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        let length = (self.length * 512f32).floor() as i64;
-        let width = (self.width * 512f32).floor() as i64;
+        let length = (self.length * 512_f32).floor() as i64;
+        let width = (self.width * 512_f32).floor() as i64;
 
         length.hash(state);
         width.hash(state);
@@ -67,13 +67,13 @@ pub trait Stack {
     fn score(&self) -> f32 {
         if !self.is_empty() {
             let area = self.area();
-            if area > 0f32 {
+            if area > 0_f32 {
                 self.used_area() / area
             } else {
-                0f32
+                0_f32
             }
         } else {
-            0f32
+            0_f32
         }
     }
 
@@ -152,7 +152,7 @@ impl Board {
     fn allocated_length(&self) -> f32 {
         self.stacks
             .iter()
-            .fold(0f32, |acc, stack| acc + stack.length())
+            .fold(0_f32, |acc, stack| acc + stack.length())
     }
 
     // returns the total length unused by stacks
@@ -196,7 +196,7 @@ impl Board {
             Some(
                 self.stacks
                     .iter()
-                    .fold(1f32, |acc, stack| acc * stack.score()),
+                    .fold(1_f32, |acc, stack| acc * stack.score()),
             )
         } else {
             None
@@ -262,7 +262,7 @@ impl Stack for RipStack {
     // A RipStack is a stack of cuts (top to bottom) which can be ripped from a crosscut section of board.
     // The length of a RipStack is the max length of the contained cuts
     fn length(&self) -> f32 {
-        let mut max_length = 0f32;
+        let mut max_length = 0_f32;
         for s in &self.stacks {
             max_length = max_length.max(s.length())
         }
@@ -316,7 +316,7 @@ impl Stack for CrosscutStack {
 
     // The width of CrosscutStack is the max of the widths of cuts
     fn width(&self) -> f32 {
-        let mut max_width = 0f32;
+        let mut max_width = 0_f32;
         for s in &self.stack {
             max_width = max_width.max(s.width)
         }
@@ -328,7 +328,7 @@ impl Stack for CrosscutStack {
     }
 
     fn used_area(&self) -> f32 {
-        let mut area = 0f32;
+        let mut area = 0_f32;
         for c in &self.stack {
             area += c.width * c.length
         }
@@ -342,7 +342,7 @@ pub fn score(boards: &[Board]) -> f32 {
     boards
         .iter()
         .filter_map(|board| board.score())
-        .fold(1f32, |acc, score| acc * score)
+        .fold(1_f32, |acc, score| acc * score)
 }
 
 fn is_a_solution_possible(model: &model::Input) -> bool {
@@ -451,8 +451,8 @@ pub fn compute(
     // Create a vector of our required Cuts and collect min/maxes for dimensions
     let (mut cutlist, cut_ranges) = {
         let mut cutlist: Vec<Cut> = Vec::new();
-        let mut longest: f32 = 0f32;
-        let mut widest: f32 = 0f32;
+        let mut longest: f32 = 0_f32;
+        let mut widest: f32 = 0_f32;
         let mut shortest: f32 = f32::MAX;
         let mut narrowest: f32 = f32::MAX;
         for cut_model in &model.cutlist {
