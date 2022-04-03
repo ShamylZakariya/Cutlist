@@ -152,16 +152,18 @@ fn draw_axis(at: Vec2, size: f32, color: Color) {
     draw_line(at.x - size, at.y, at.x + size, at.y, 1f32, color);
 }
 
-pub async fn show(solutions: &[Vec<solver::Board>]) {
+pub async fn show(solutions: &[Vec<solver::Board>], print: bool) {
     let mut scale = 16f32;
     let mut origin = Vec2::new(0f32, 0f32);
     let mut mouse_down_position: Option<Vec2> = None;
     let mut current_solution_index: usize = 0;
 
-    println!(
-        "solution[{}]:\n{:#?}\n\n",
-        current_solution_index, &solutions[current_solution_index]
-    );
+    if print {
+        println!(
+            "solution[{}]:\n{:#?}\n\n",
+            current_solution_index, &solutions[current_solution_index]
+        );
+    }
 
     loop {
         let cutlist = &solutions[current_solution_index];
@@ -255,7 +257,7 @@ pub async fn show(solutions: &[Vec<solver::Board>]) {
             scale = 16f32;
         }
 
-        let debug_print_solution: bool = if is_key_pressed(KeyCode::J) {
+        let solution_index_changed: bool = if is_key_pressed(KeyCode::J) {
             current_solution_index = (current_solution_index + 1).min(solutions.len() - 1);
             true
         } else if is_key_pressed(KeyCode::K) && current_solution_index > 0 {
@@ -265,7 +267,7 @@ pub async fn show(solutions: &[Vec<solver::Board>]) {
             false
         };
 
-        if debug_print_solution {
+        if print && solution_index_changed {
             println!(
                 "solution[{}]:\n{:#?}\n\n",
                 current_solution_index, &solutions[current_solution_index]

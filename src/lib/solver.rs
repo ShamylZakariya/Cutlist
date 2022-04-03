@@ -160,22 +160,35 @@ impl Board {
         self.length - self.allocated_length()
     }
 
+    // find the best stack in the board for this cut, or None if a new stack should
+    // be created
     fn best_stack_for_cut(&self, cut: &Cut) -> Option<usize> {
-        // find the best stack in the board for this cut
-        // TODO: Consider a vetting criteria such as, is this stack less than 50% different in length?
-        let mut best_stack_index: Option<usize> = None;
-        let mut best_stack_length_difference: f32 = f32::MAX;
-        for (i, stack) in self.stacks.iter().enumerate() {
-            if stack.width() + cut.width < self.width {
-                let length_difference = (cut.length - stack.length()).abs();
-                if length_difference < best_stack_length_difference {
-                    best_stack_index = Some(i);
-                    best_stack_length_difference = length_difference;
+        // while we have room for a cut, add a new ripstack. When
+        // out of room, start adding to ripstacks which are a good fit.
+        if self.unallocated_length() >= cut.length {
+            None
+        } else {
+            // select the stack with a length closest to length of current cut
+            let mut best_stack_index: Option<usize> = None;
+            let mut best_stack_length_difference: f32 = f32::MAX;
+            for (i, stack) in self.stacks.iter().enumerate() {
+                if stack.width() + cut.width < self.width {
+                    let length_difference = (cut.length - stack.length()).abs();
+                    if length_difference < best_stack_length_difference {
+                        best_stack_index = Some(i);
+                        best_stack_length_difference = length_difference;
+                    }
                 }
             }
-        }
 
-        best_stack_index
+            // if the best fitting stack has a length difference more than
+            // 50% off our cut length, don't use it
+            if best_stack_length_difference < cut.length / 2_f32 {
+                best_stack_index
+            } else {
+                None
+            }
+        }
     }
 
     fn score(&self) -> Option<f32> {
@@ -204,7 +217,7 @@ impl RipStack {
     }
 
     fn best_stack_for_cut(&self, cut: &Cut) -> Option<usize> {
-        return None;
+        None
 
         // For now, select the shortest stack. TODO: We may want to bias to
         // stacks of closest width to the cut.
