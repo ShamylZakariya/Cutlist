@@ -64,16 +64,16 @@ pub trait Stack {
 
     fn is_empty(&self) -> bool;
 
-    fn score(&self) -> f32 {
+    fn score(&self) -> Option<f32> {
         if !self.is_empty() {
             let area = self.area();
             if area > 0_f32 {
-                self.used_area() / area
+                Some(self.used_area() / area)
             } else {
-                0_f32
+                None
             }
         } else {
-            0_f32
+            None
         }
     }
 
@@ -196,7 +196,8 @@ impl Board {
             Some(
                 self.stacks
                     .iter()
-                    .fold(1_f32, |acc, stack| acc * stack.score()),
+                    .filter_map(|board| board.score())
+                    .fold(1_f32, |acc, score| acc * score),
             )
         } else {
             None
@@ -217,6 +218,12 @@ impl RipStack {
     }
 
     fn best_stack_for_cut(&self, cut: &Cut) -> Option<usize> {
+        for (i, stack) in self.stacks.iter().enumerate() {
+            if (cut.width - stack.width()).abs() < 1e-4 {
+                return Some(i);
+            }
+        }
+
         None
 
         // For now, select the shortest stack. TODO: We may want to bias to
